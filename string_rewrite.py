@@ -290,13 +290,29 @@ class RewriteSystem:
             did_something = True
         return did_something
 
+    def simulate(self, steps):
+        rules_used = []
+        w = self.start
+        for _ in range(steps):
+            for i, rw in enumerate(self.rewrites):
+                x = rw.apply_to(w, as_tape=True)
+                if x is w: continue
+                w = x
+                rules_used.append(i)
+                print(w)
+                break
+        delimiter = ',' if len(self.rewrites)>10 else ''
+        print('Rules used:', delimiter.join(map(str, rules_used)))
+        print('Frequency:', Counter(rules_used).most_common())
+
 if __name__ == '__main__':
     from argparse import ArgumentParser
     ap = ArgumentParser(description='Try to simplify a TM as a string rewriting system.')
     ap.add_argument('--db', help='Path to DB file', type=str, default=DB_PATH)
-    ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='*', default=[7410754, 5878998])
+    ap.add_argument('--simulate', help='Show this many steps.', type=int, default=0)
     ap.add_argument('--splitf', help='Word(s) to split domains ("from" side) on', type=str, nargs='*', default=[])
     ap.add_argument('--splitt', help='Word(s) to split codomains ("to" side) on', type=str, nargs='*', default=[])
+    ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='*', default=[7410754, 5878998])
     args = ap.parse_args()
 
     for seed in args.seeds:
@@ -308,4 +324,6 @@ if __name__ == '__main__':
         for word_str in args.splitt:
             S.split_rules('t', Word.from_str(word_str))
         S.simplify()
+        if (args.simulate):
+            S.simulate(steps=args.simulate)
         print(S)
