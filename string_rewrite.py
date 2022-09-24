@@ -257,6 +257,12 @@ class RewriteSystem:
         self._add_rule(rewrite)
         return True
 
+    def split_rules(self, side, word):
+        did_something = False
+        while any(self.split_rule(rewrite, side, word) for rewrite in self.rewrites):
+            did_something = True
+            self.prune()
+
     def simplify_once(self):
         cyclic_states = {rewrite.f.s for rewrite in self.rewrites if rewrite.f.s == rewrite.t.s}
         rest = Counter(s for rewrite in self.rewrites for s in (rewrite.f.s, rewrite.t.s) if s not in cyclic_states)
