@@ -179,17 +179,41 @@ class RewriteSystem:
             if any(halting_word in rewrite.t for halting_word in self.special_words[typ]):
                 self._add_word(typ, rewrite.f)
                 return
-        if rewrite.then(rewrite, total_only=True):
-            self._add_word('cycling', rewrite.f)
-            return
-        for try_after in self.rewrites:
-            if (comp := rewrite.then(try_after, total_only=True)):
-                rewrite = comp
-                break
+
         self.rewrites.append(rewrite)
-        for i, try_before in enumerate(self.rewrites):
+        self._try_post_compositions(-1)
+
+        # See if any older entries now have post-compositions to consider.
+        i = 0
+        while i < len(self.rewrites):
+            try_before = self.rewrites[i]
             if (comp := try_before.then(rewrite, total_only=True)):
                 self.rewrites[i] = comp
+                if self._try_post_compositions(i):
+                    i -= 1
+            i += 1
+
+    def _try_post_compositions(self, i):
+        ''' Follow up self.rewrites[i] with other rules (total post-compositions only) for as long as possible.
+            It's possible for this to lead to an infinite loop. If so, delete the rewrite and mark its domain as cycling.
+            Return True if we had to do that, False otherwise. '''
+        # ASSUMPTION: all rewrites are word-length-preserving (true for TM rules), so an infinite loop will actually revisit a word.
+        rewrite = self.rewrites[i]
+        output_words = [rewrite.t]
+        while True:
+            for try_after in self.rewrites:
+                if (comp := rewrite.then(try_after, total_only=True)):
+                    rewrite = comp
+                    if rewrite.t in output_words:
+                        self._add_word('cycling', rewrite.f)
+                        del self.rewrites[i]
+                        return True
+                    output_words.append(rewrite.t)
+                    break
+            else:
+                break
+        self.rewrites[i] = rewrite
+        return False
 
     def prune(self):
         ''' Try to find an unreachable state (after advancing the start state, if needed). Return True if anything happened. '''
