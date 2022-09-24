@@ -112,23 +112,20 @@ class RewriteSystem:
     '''
     A "deterministic rewrite system" over the language of tape words [01]*[a-eA-E][01]*.
     The possible tape states are partitioned into those matching exactly one of a finite set of Words, which are:
-    1. halting, 2. unreachable, or 3. the "from" side of a Rewrite.
+    1. halting, 2. unreachable, 3. cycling, or 4. the "from" side of a Rewrite.
     '''
 
     def __init__(self, machine):
-        self.halting_words = []
-        self.unreach_words = []
+        self.special_words = {'halting': [], 'cycling': [], 'unreachable': []}
         self.rewrites = []
         self.start = Word(s='a')
         for rewrite in self.read(machine):
             self._add_rule(rewrite)
 
     def __str__(self):
-        return ', '.join([f'TM Rewrite System: start {self.start}', self._word_rep('halting'), self._word_rep('unreach'),
+        word_lists = [f'{typ} (' + '|'.join(map(str, words)) + ')' for (typ, words) in self.special_words.items()]
+        return ', '.join([f'TM Rewrite System: start {self.start}', *word_lists,
                 'rules: ' + '\n    '.join([''] + [str(rewrite) for rewrite in self.rewrites])])
-
-    def _word_rep(self, typ):
-        return f'{typ} (' + '|'.join(map(str, getattr(self, typ+'_words'))) + ')'
 
     def read(self, machine):
         for i in range(5):
@@ -153,8 +150,8 @@ class RewriteSystem:
                             del self.rewrites[k]
 
     def _add_word(self, typ, word):
-        ''' Add the given word to the "halting" or "unreach" list (as directed). To avoid redundancy, merge with adjacent words, e.g. 0e0|0e1 -> 0e. '''
-        lst = getattr(self, typ+'_words')
+        ''' Add the given word to the given special_words list. To avoid redundancy, merge with adjacent words, e.g. 0e0|0e1 -> 0e. '''
+        lst = self.special_words[typ]
         # To avoid redundancy, merge with existing words.
         while True:
             try:
@@ -173,8 +170,12 @@ class RewriteSystem:
 
     def _add_rule(self, rewrite):
         ''' Add the given rewrite to the rule list. Ensure that each rule has had all total post-compositions applied already. '''
-        if any(halting_word in rewrite.t for halting_word in self.halting_words):
-            self._add_word('halting', rewrite.f)
+        for typ in 'halting', 'cycling':
+            if any(halting_word in rewrite.t for halting_word in self.special_words[typ]):
+                self._add_word(typ, rewrite.f)
+                return
+        if rewrite.then(rewrite, total_only=True):
+            self._add_word('cycling', rewrite.f)
             return
         for try_after in self.rewrites:
             if (comp := rewrite.then(try_after, total_only=True)):
@@ -207,7 +208,7 @@ class RewriteSystem:
                 # If the start word isn't rewritten, it's halting! Someone handed us a trivial case.
                 did_something = bool(self.rewrites)
                 for rewrite in self.rewrites:
-                    self._add_word('unreach', rewrite.f)
+                    self._add_word('unreachable', rewrite.f)
                 self.rewrites.clear()
                 break
             if keep is None:
@@ -220,14 +221,15 @@ class RewriteSystem:
         for i, rewrite in enumerate(self.rewrites):
             if not keep[i]:
                 did_something = True
-                self._add_word('unreach', rewrite.f)
+                self._add_word('unreachable', rewrite.f)
         self.rewrites = [rewrite for i, rewrite in enumerate(self.rewrites) if keep[i]]
 
-        unreachable_halting_words = [word for word in self.halting_words if all(rewrite * Rewrite(word,word) is None for rewrite in self.rewrites)]
-        for word in unreachable_halting_words:
-            self.halting_words.remove(word)
-            self._add_word('unreach', word)
-            did_something = True
+        for typ in 'halting', 'cycling':
+            unreachable_special_words = [word for word in self.special_words[typ] if all(rewrite * Rewrite(word,word) is None for rewrite in self.rewrites)]
+            for word in unreachable_special_words:
+                self.special_words[typ].remove(word)
+                self._add_word('unreachable', word)
+                did_something = True
 
         return did_something
 
