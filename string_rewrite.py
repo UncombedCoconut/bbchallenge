@@ -4,6 +4,7 @@
 from bbchallenge import DB_PATH, get_machine_i, ithl, g
 from collections import Counter
 from dataclasses import dataclass
+import re
 
 
 def flip(bit_char):
@@ -50,6 +51,10 @@ class Word:
 
     def __radd__(self, bits):
         return Word(bits + self.l, self.s, self.r)
+
+    @classmethod
+    def from_str(cls, string):
+        return cls(*re.match('^([01]*)([a-eA-E])([01]*)$', string).groups())
 
 
 @dataclass
@@ -290,11 +295,17 @@ if __name__ == '__main__':
     ap = ArgumentParser(description='Try to simplify a TM as a string rewriting system.')
     ap.add_argument('--db', help='Path to DB file', type=str, default=DB_PATH)
     ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='*', default=[7410754, 5878998])
+    ap.add_argument('--splitf', help='Word(s) to split domains ("from" side) on', type=str, nargs='*', default=[])
+    ap.add_argument('--splitt', help='Word(s) to split codomains ("to" side) on', type=str, nargs='*', default=[])
     args = ap.parse_args()
 
     for seed in args.seeds:
         print('='*40, seed, '='*40)
         machine = get_machine_i(args.db, seed)
         S = RewriteSystem(machine)
+        for word_str in args.splitf:
+            S.split_rules('f', Word.from_str(word_str))
+        for word_str in args.splitt:
+            S.split_rules('t', Word.from_str(word_str))
         S.simplify()
         print(S)
