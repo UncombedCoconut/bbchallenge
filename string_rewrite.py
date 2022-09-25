@@ -175,11 +175,6 @@ class RewriteSystem:
 
     def _add_rule(self, rewrite):
         ''' Add the given rewrite to the rule list. Ensure that each rule has had all total post-compositions applied already. '''
-        for typ in 'halting', 'cycling':
-            if any(halting_word in rewrite.t for halting_word in self.special_words[typ]):
-                self._add_word(typ, rewrite.f)
-                return
-
         self.rewrites.append(rewrite)
         self._try_post_compositions(-1)
 
@@ -195,12 +190,17 @@ class RewriteSystem:
 
     def _try_post_compositions(self, i):
         ''' Follow up self.rewrites[i] with other rules (total post-compositions only) for as long as possible.
-            It's possible for this to lead to an infinite loop. If so, delete the rewrite and mark its domain as cycling.
+            This may lead to a halting or cycling behavior. If so, delete the rewrite and mark its domain as appropriate.
             Return True if we had to do that, False otherwise. '''
         # ASSUMPTION: all rewrites are word-length-preserving (true for TM rules), so an infinite loop will actually revisit a word.
         rewrite = self.rewrites[i]
         output_words = [rewrite.t]
         while True:
+            for typ in 'halting', 'cycling':
+                if any(word in rewrite.t for word in self.special_words[typ]):
+                    self._add_word(typ, rewrite.f)
+                    del self.rewrites[i]
+                    return True
             for try_after in self.rewrites:
                 if (comp := rewrite.then(try_after, total_only=True)):
                     rewrite = comp
