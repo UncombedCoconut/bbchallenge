@@ -65,8 +65,29 @@ def ctl_search(machine, nLmax, nRmax):
                 search(0, 0, 0, 0)
             except InterruptedError:
                 continue
-            print(f'DFAs: {L=}, {R=}, accept:', *[f'{l}:{ithl(s)}@{b}:{r}' for l in range(nL) for s in range(5) for b in range(2) for r in range(nR) if accept[l][s][b][r]])
+            ctl_print(L, nL, R, nR, accept)
             return
+
+
+def ctl_print(L, nL, R, nR, accept):
+    if args.re:
+        from automata.fa import nfa, gnfa
+        from itertools import product
+        transitions = {f'L{l}': {'0': set(), '1': set()} for l in range(nL)} | {f'R{r}': {'0': set(), '1': set()} for r in range(nR)}
+        for l in range(nL):
+            transitions[f'L{l}']['0'].add(f'L{L[2*l+0]}')
+            transitions[f'L{l}']['1'].add(f'L{L[2*l+1]}')
+        for r in range(nR):
+            transitions[f'R{R[2*r+0]}']['0'].add(f'R{r}')
+            transitions[f'R{R[2*r+1]}']['1'].add(f'R{r}')
+        for (l, s, b, r) in product(range(nL), range(5), range(2), range(nR)):
+            if accept[l][s][b][r]:
+                head = ithl(s).upper() if b else ithl(s).lower()
+                transitions[f'L{l}'].setdefault(head, set()).add(f'R{r}')
+        marvin = nfa.NFA(states=set(transitions), input_symbols=set('01aAbBcCdDeE'), transitions=transitions, initial_state='L0', final_states={'R0'})
+        print(gnfa.GNFA.from_nfa(marvin).to_regex())
+    else:
+        print(f'DFAs: {L=}, {R=}, accept:', *[f'{l}:{ithl(s)}@{b}:{r}' for l in range(nL) for s in range(5) for b in range(2) for r in range(nR) if accept[l][s][b][r]])
 
 
 if __name__ == '__main__':
@@ -75,6 +96,7 @@ if __name__ == '__main__':
     ap.add_argument('--db', help='Path to DB file', type=str, default=DB_PATH)
     ap.add_argument('-l', help='Max DFA states for left side', type=int, default=4)
     ap.add_argument('-r', help='Max DFA states for right side', type=int, default=4)
+    ap.add_argument('--re', help='Output a regular expression (requires automata-lib)', action='store_true')
     ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='*', default=[7410754])
     args = ap.parse_args()
 
