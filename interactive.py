@@ -18,7 +18,8 @@ from string_rewrite import get_machine_i, DB_PATH, Rewrite, RewriteSystem, Word
 class GUI(DotWidget):
     def __init__(self, srs):
         super().__init__()
-        self.srs = srs
+        self.srs = deepcopy(srs)
+        self.srs.prune()
         self.undo_stack = []
         self.refresh()
 
@@ -27,9 +28,7 @@ class GUI(DotWidget):
         return True
 
     def on_key_press_event(self, widget, event):
-        if event.keyval == Gdk.KEY_p:
-            return self.action('prune')
-        elif event.keyval == Gdk.KEY_s:
+        if event.keyval == Gdk.KEY_s:
             return self.action('simplify')
         elif event.keyval == Gdk.KEY_z:
             return self.on_undo()
@@ -72,6 +71,7 @@ class GUI(DotWidget):
         self.undo_stack.append((deepcopy(self.srs), f'{method}{args}'))
         print('ACTION', self.undo_stack[-1][1])
         getattr(self.srs, method)(*args)
+        self.srs.prune()
         print(self.srs)
         print()
         return self.refresh()
