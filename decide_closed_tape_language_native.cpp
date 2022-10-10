@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2022 Justin Blanchard <UncombedCoconut@gmail.com>
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0 OR MIT
 // Please use decide_closed_tape_language_l2r.py as the reference implementation.
 // This is a C++ translation with no attempt at clear presentation.
 

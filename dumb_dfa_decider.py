@@ -1,6 +1,6 @@
 #!/usr/bin/pypy3
 # SPDX-FileCopyrightText: 2022 Justin Blanchard <UncombedCoconut@gmail.com>
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: Apache-2.0 OR MIT
 from bbchallenge import DB_PATH, get_machine_i, ithl
 
 

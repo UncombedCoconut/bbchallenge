@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # SPDX-FileCopyrightText: 2022 Justin Blanchard <UncombedCoconut@gmail.com>
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: Apache-2.0 OR MIT
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import partial
