@@ -103,18 +103,25 @@ def test_zero_stacks(T, initial_state=1):
 
 def ctl_search(tm, l_states_max):
     ''' Return a Closed Tape Language which recognizes all halting configurations of the TM but not the intial state... if we find one. '''
+    # Construct the TM's mirror image (left/right moves reversed), so that (despite the above asymmetry) we can start the search on either side.
+    mirror_tm = bytearray(tm)
+    for i in range(1, 31, 3):
+        mirror_tm[i] ^= 1
+    mirror_tm = bytes(mirror_tm)
+
     for l_states in range(1, l_states_max+1):
-        for l_dfa in binary_DFAs(l_states):
-            r_nfa = right_half_tape_NFA(tm, l_dfa)
-            if not test_zero_stacks(r_nfa): # Even modulo l_dfa's equivalence on left half-tapes, halting states are unreachable from [0] A@00....0.
-                return CTL(l_dfa, r_nfa)
+        for mirrored in False, True:
+            for l_dfa in binary_DFAs(l_states):
+                r_nfa = right_half_tape_NFA(mirror_tm if mirrored else tm, l_dfa)
+                if not test_zero_stacks(r_nfa): # Even modulo l_dfa's equivalence on left half-tapes, halting states are unreachable from [0] A@00....0.
+                    return CTL(l_dfa, r_nfa, mirrored)
     return False
 
 
 class CTL:
     ''' A displayable Closed Tape Language. For purposes of this decider, a tape's format is [01]*[A-E][01]*, with the head [A-E] on the following digit. '''
-    def __init__(self, l_dfa, r_nfa):
-        self.l_dfa, self.r_nfa = l_dfa, r_nfa
+    def __init__(self, l_dfa, r_nfa, mirrored=False):
+        self.l_dfa, self.r_nfa, self.mirrored = l_dfa, r_nfa, mirrored
 
     def __str__(self):
         ''' Return a regexp representation. Requires automata-lib.
@@ -142,6 +149,8 @@ class CTL:
                 transitions[QL(l)][ithl(s)] = {QR(5*l+s+1)}
         final_states = {QR(r) for r in range(nR) if test_zero_stacks(self.r_nfa, r)}
         marvin = nfa.NFA(states=set(transitions), input_symbols=set('01ABCDE'), transitions=transitions, initial_state='L0', final_states=final_states)
+        if self.mirrored:
+            marvin = marvin.reverse()
         expr = gnfa.GNFA.from_nfa(marvin).to_regex()
 
         # We're theoretically done, but automata-lib fails really hard at simplifying RE's.

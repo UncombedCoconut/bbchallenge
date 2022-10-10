@@ -4,6 +4,7 @@
 // This is a C++ translation with no attempt at clear presentation.
 
 #include <cstdint>
+#include <cstring>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -152,11 +153,18 @@ BinFA right_half_tape_NFA(TM tm, BinFA const& dfa)
 
 bool ctl_search(TM tm, uint64_t l_states_max)
 {
+    uint8_t mirror_tm[30];
+    std::memcpy(mirror_tm, tm, 30);
+    for (int i = 0; i < 10; i++)
+        mirror_tm[3*i+1] ^= 1;
+
     for (uint64_t l_states = 1; l_states <= l_states_max; l_states++)
-        for (auto& l_dfa: binary_DFAs(l_states)) {
-            auto r_nfa = right_half_tape_NFA(tm, l_dfa);
-            if (!test_zero_stacks(r_nfa))
-                return true;
+        for (bool mirrored: {false, true}) {
+            for (auto& l_dfa: binary_DFAs(l_states)) {
+                auto r_nfa = right_half_tape_NFA(mirrored ? mirror_tm : tm, l_dfa);
+                if (!test_zero_stacks(r_nfa))
+                    return true;
+            }
         }
     return false;
 }
