@@ -1,7 +1,7 @@
 #!/usr/bin/pypy3
 # SPDX-FileCopyrightText: 2022 Justin Blanchard <UncombedCoconut@gmail.com>
 # SPDX-License-Identifier: Apache-2.0 OR MIT
-from bbchallenge import DB_PATH, get_machine_i, ithl, g
+from bbchallenge import get_machine_i, ithl, g
 from collections import Counter
 from dataclasses import dataclass
 import re
@@ -332,7 +332,7 @@ class RewriteSystem:
 if __name__ == '__main__':
     from argparse import ArgumentParser
     ap = ArgumentParser(description='Try to simplify a TM as a string rewriting system.')
-    ap.add_argument('--db', help='Path to DB file', type=str, default=DB_PATH)
+    ap.add_argument('--db', help='Path to DB file', type=str, default='all_5_states_undecided_machines_with_global_header')
     ap.add_argument('--simulate', help='Show this many steps.', type=int, default=0)
     ap.add_argument('--splitf', help='Word(s) to split domains ("from" side) on', type=str, nargs='*', default=[])
     ap.add_argument('--splitt', help='Word(s) to split codomains ("to" side) on', type=str, nargs='*', default=[])

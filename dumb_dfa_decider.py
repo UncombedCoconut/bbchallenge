@@ -1,7 +1,7 @@
 #!/usr/bin/pypy3
 # SPDX-FileCopyrightText: 2022 Justin Blanchard <UncombedCoconut@gmail.com>
 # SPDX-License-Identifier: Apache-2.0 OR MIT
-from bbchallenge import DB_PATH, get_machine_i, ithl
+from bbchallenge import get_machine_i, ithl
 
 
 def bin_dfa_iter(n):
@@ -93,7 +93,7 @@ def ctl_print(L, nL, R, nR, accept):
 if __name__ == '__main__':
     from argparse import ArgumentParser
     ap = ArgumentParser(description='If a Closed Tape Language of given complexity proves a TM cannot halt, show it.')
-    ap.add_argument('--db', help='Path to DB file', type=str, default=DB_PATH)
+    ap.add_argument('--db', help='Path to DB file', type=str, default='all_5_states_undecided_machines_with_global_header')
     ap.add_argument('-l', help='Max DFA states for left side', type=int, default=4)
     ap.add_argument('-r', help='Max DFA states for right side', type=int, default=4)
     ap.add_argument('--re', help='Output a regular expression (requires automata-lib)', action='store_true')

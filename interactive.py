@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/pypy3
 # SPDX-FileCopyrightText: 2022 Justin Blanchard <UncombedCoconut@gmail.com>
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 from copy import deepcopy
@@ -12,7 +12,7 @@ from gi.repository import Gdk
 from xdot import DotWidget, DotWindow
 from xdot.ui.elements import Edge, Node
 
-from string_rewrite import get_machine_i, DB_PATH, Rewrite, RewriteSystem, Word
+from string_rewrite import get_machine_i, Rewrite, RewriteSystem, Word
 
 
 class GUI(DotWidget):
@@ -86,7 +86,7 @@ class GUI(DotWidget):
 if __name__ == '__main__':
     from argparse import ArgumentParser
     ap = ArgumentParser(description='Try to simplify a TM as a string rewriting system.')
-    ap.add_argument('--db', help='Path to DB file', type=str, default=DB_PATH)
+    ap.add_argument('--db', help='Path to DB file', type=str, default='all_5_states_undecided_machines_with_global_header')
     ap.add_argument('--splitf', help='Word(s) to split domains ("from" side) on', type=str, nargs='*', default=[])
     ap.add_argument('--splitt', help='Word(s) to split codomains ("to" side) on', type=str, nargs='*', default=[])
     ap.add_argument('--seed', help='DB seed number', type=int, default=7410754)

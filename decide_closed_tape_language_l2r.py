@@ -1,7 +1,7 @@
 #!/usr/bin/pypy3
 # SPDX-FileCopyrightText: 2022 Justin Blanchard <UncombedCoconut@gmail.com>
 # SPDX-License-Identifier: Apache-2.0 OR MIT
-from bbchallenge import DB_PATH, get_header, get_machine_i, ithl
+from bbchallenge import get_header, get_machine_i, ithl
 
 def binary_DFAs(n):
     ''' We wish to solve a TM modulo an equivalence relation on the left-of-head tape configurations.
@@ -180,7 +180,7 @@ class CTL:
 if __name__ == '__main__':
     from argparse import ArgumentParser
     ap = ArgumentParser(description='If a Closed Tape Language of given complexity proves a TM cannot halt, show it.')
-    ap.add_argument('--db', help='Path to DB file', type=str, default=DB_PATH)
+    ap.add_argument('--db', help='Path to DB file', type=str, default='all_5_states_undecided_machines_with_global_header')
     ap.add_argument('-l', help='State limit for the left half-tape DFA. At worst, 5 (default) should be sub-second and 6 sub-minute.', type=int, default=5)
     ap.add_argument('-q', '--quiet', help='Do not output regexp proofs (for speed or to avoid depending on automata-lib)', action='store_true')
     ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='*', default=[])

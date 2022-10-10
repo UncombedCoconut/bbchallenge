@@ -1,0 +1,3 @@
+[submodule "bbchallenge-py"]
+	path = bbchallenge-py
+	url = https://github.com/bbchallenge/bbchallenge-py.git
