@@ -126,7 +126,7 @@ class CTL:
     def __str__(self):
         ''' Return a regexp representation. Requires automata-lib.
             This code is allowed to be icky because the point is to output an untrusted, verifiable certificate of the result. '''
-        from automata.fa import nfa, gnfa
+        from automata.fa import dfa, nfa, gnfa
         import re
 
         nL, nR = len(self.l_dfa)//2, len(self.r_nfa)//2
@@ -148,10 +148,14 @@ class CTL:
             for s in range(5):
                 transitions[QL(l)][ithl(s)] = {QR(5*l+s+1)}
         final_states = {QR(r) for r in range(nR) if test_zero_stacks(self.r_nfa, r)}
+        # Inspired by Brzozowski's simple algorithm for *D*FA minimization, we try two automata: one constructed simply, and one determinized (which surprisingly often helps instead of hurting).
         marvin = nfa.NFA(states=set(transitions), input_symbols=set('01ABCDE'), transitions=transitions, initial_state='L0', final_states=final_states)
         if self.mirrored:
             marvin = marvin.reverse()
-        expr = gnfa.GNFA.from_nfa(marvin).to_regex()
+            bender = nfa.NFA.from_dfa(dfa.DFA.from_nfa(marvin).minify())
+        else:
+            bender = nfa.NFA.from_dfa(dfa.DFA.from_nfa(marvin.reverse()).minify()).reverse()
+        expr = min(gnfa.GNFA.from_nfa(marvin).to_regex(), gnfa.GNFA.from_nfa(bender).to_regex(), key=len)
 
         # We're theoretically done, but automata-lib fails really hard at simplifying RE's.
         # Collapse idiocy like ((A|B)|C) to equivalents like (A|B|C).
@@ -177,9 +181,7 @@ if __name__ == '__main__':
     for seed in args.seeds or range(int.from_bytes(get_header(args.db)[8:12], byteorder='big')):
         tm = get_machine_i(args.db, seed)
         ctl = ctl_search(tm, args.l)
-        if ctl and args.quiet:
-            print(seed, 'infinite', sep=', ')
-        elif ctl:
+        if ctl and not args.quiet:
             print(seed, 'infinite', ctl_search(tm, args.l), sep=', ')
         else:
-            print(seed, 'undecided')
+            print(seed, 'infinite' if ctl else 'undecided', sep=', ')
