@@ -119,7 +119,7 @@ def ctl_search(tm, l_states_max):
 
 
 class CTL:
-    ''' A displayable Closed Tape Language. For purposes of this decider, a tape's format is [01]*[A-E][01]*, with the head [A-E] on the following digit. '''
+    ''' A displayable Closed Tape Language. '''
     def __init__(self, l_dfa, r_nfa, mirrored=False):
         self.l_dfa, self.r_nfa, self.mirrored = l_dfa, r_nfa, mirrored
 
@@ -157,15 +157,23 @@ class CTL:
             bender = nfa.NFA.from_dfa(dfa.DFA.from_nfa(marvin.reverse()).minify()).reverse()
         expr = min(gnfa.GNFA.from_nfa(marvin).to_regex(), gnfa.GNFA.from_nfa(bender).to_regex(), key=len)
 
+        # In the above formalism, we had the "right"-facing PDA consuming the bit in front of it. But if we mirrored, the head is on the bit to the left. Show what we mean!
+        expr = re.sub(r'([A-E])', r'<\1' if self.mirrored else r'\1>', expr)
         # We're theoretically done, but automata-lib fails really hard at simplifying RE's.
         # Collapse idiocy like ((A|B)|C) to equivalents like (A|B|C).
         for _ in range(4):
             expr = re.sub(r'([|(])\(([^()+?*]+)\)([|)])', r'\1\2\3', expr)
         # Use character-class syntax where applicable.
         for i in range(6, 1, -1):
-            expr = re.sub(r'\(' + r'\|'.join(['(.)']*i) + r'\)',  '[' + ''.join([fr'\{j+1}' for j in range(i)]) + ']' , expr)
-            expr = re.sub(r'\|' + r'\|'.join(['(.)']*i) + r'\)', '|[' + ''.join([fr'\{j+1}' for j in range(i)]) + ']' , expr)
-            expr = re.sub(r'\(' + r'\|'.join(['(.)']*i) + r'\|',  '[' + ''.join([fr'\{j+1}' for j in range(i)]) + ']|', expr)
+            expr = re.sub(r'\(' + r'\|'.join([ '(.)' ]*i) + r'\)',   '[' + ''.join([fr'\{j+1}' for j in range(i)]) + ']'  , expr)
+            expr = re.sub(r'\|' + r'\|'.join([ '(.)' ]*i) + r'\)',  '|[' + ''.join([fr'\{j+1}' for j in range(i)]) + '])' , expr)
+            expr = re.sub(r'\(' + r'\|'.join([ '(.)' ]*i) + r'\|',  '([' + ''.join([fr'\{j+1}' for j in range(i)]) + ']|' , expr)
+            expr = re.sub(r'\(' + r'\|'.join([ '(.)>']*i) + r'\)',   '[' + ''.join([fr'\{j+1}' for j in range(i)]) + ']>' , expr)
+            expr = re.sub(r'\|' + r'\|'.join([ '(.)>']*i) + r'\)',  '|[' + ''.join([fr'\{j+1}' for j in range(i)]) + ']>)', expr)
+            expr = re.sub(r'\(' + r'\|'.join([ '(.)>']*i) + r'\|',  '([' + ''.join([fr'\{j+1}' for j in range(i)]) + ']>|', expr)
+            expr = re.sub(r'\(' + r'\|'.join(['<(.)' ]*i) + r'\)',  '<[' + ''.join([fr'\{j+1}' for j in range(i)]) + ']'  , expr)
+            expr = re.sub(r'\|' + r'\|'.join(['<(.)' ]*i) + r'\)', '|<[' + ''.join([fr'\{j+1}' for j in range(i)]) + '])' , expr)
+            expr = re.sub(r'\(' + r'\|'.join(['<(.)' ]*i) + r'\|', '(<[' + ''.join([fr'\{j+1}' for j in range(i)]) + ']|' , expr)
         return expr
 
 
