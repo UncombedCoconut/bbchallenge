@@ -52,9 +52,11 @@ class Word:
     def __radd__(self, bits):
         return Word(bits + self.l, self.s, self.r)
 
-    @classmethod
-    def from_str(cls, string):
-        return cls(*re.match('^([01]*)([a-eA-E])([01]*)$', string).groups())
+    def __reversed__(self):
+        return Word(self.r[::-1], self.s, self.l[::-1])
+
+    def from_str(string):
+        return Word(*re.match('^([01]*)([a-eA-E])([01]*)$', string).groups())
 
 
 @dataclass
@@ -109,6 +111,9 @@ class Rewrite:
     __call__ = apply_to
     __mul__ = then  # Support f*g to meaning f followed by g (g(f(_)))... hopefully a good idea?
 
+    def mirror(self):
+        return Rewrite(reversed(self.f), reversed(self.t))
+
     def __str__(self):
         return f'{self.f}\u2192{self.t}'
 
@@ -131,6 +136,13 @@ class RewriteSystem:
         word_lists = [f'{typ} (' + '|'.join(map(str, words)) + ')' for (typ, words) in self.special_words.items()]
         return ', '.join([f'TM Rewrite System: start {self.start}', *word_lists,
                 'rules: ' + '\n    '.join([''] + [str(rewrite) for rewrite in self.rewrites])])
+
+    def mirror(self):
+        srs = RewriteSystem.__new__(RewriteSystem)
+        srs.special_words = {typ: [reversed(w) for w in words] for (typ, words) in self.special_words.items()}
+        srs.rewrites = [rw.mirror() for rw in self.rewrites]
+        srs.start = reversed(self.start)
+        return srs
 
     def read(self, machine):
         for i in range(5):
