@@ -66,7 +66,7 @@ def right_half_tape_NFA(tm, dfa):
     nP = 5 * (len(dfa)//2) + 1
     transP = list(quotient_PDS(tm, dfa))
     # Start with a recognizer for HALT configurations. (The paper demands no transitions to initial states, but a loop at HALT doesn't affect its proof.)
-    T = [1, 1] + [0]*(2*nP)
+    T = [1, 1] + [0]*(2*nP-2)
     # Add the transitions described in [BEM97] section 2.2, until none of them are new.
     grew = True
     while grew:
