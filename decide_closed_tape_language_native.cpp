@@ -9,7 +9,6 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
-#include <vector>
 
 struct BinFA
 {
@@ -73,36 +72,7 @@ binary_DFAs::iterator& binary_DFAs::iterator::operator++()
     return *this;
 }
 
-struct Word { uint64_t le; int l; };
-Word word() { return Word{0, 0}; }
-Word word(uint64_t first, uint64_t second) { return Word{first|(second<<1), 2}; }
-
-struct PDSTransition { uint64_t f; uint8_t r; uint64_t t; Word w; };
-
 typedef const uint8_t TM[30];
-
-std::vector<PDSTransition> quotient_PDS(TM tm, BinFA const& dfa)
-{
-    std::vector<PDSTransition> pds;
-    for (int s = 0; s < 5; s++)
-        for (uint8_t b = 0; b < 2; b++) {
-            uint8_t write = tm[6*s+3*b+0], move = tm[6*s+3*b+1], goto_p1 = tm[6*s+3*b+2];
-            for (uint64_t q1 = 0; q1 < dfa.n; q1++)
-                for (uint8_t b1 = 0; b1 < 2; b1++) {
-                    uint64_t q2 = dfa.T[2*q1+b1];
-                    if (!goto_p1) {  // HALT rule for s@b - just need one PDS transition per DFA state.
-                        if (b1==0)
-                            pds.push_back(PDSTransition{5*q1+s+1, b, 0, word()});
-                    }
-                    else if (move)  // LEFT rule: [δ(q1,b1)] s@b RHS => [q1] goto_p1@b1 write RHS
-                        pds.push_back(PDSTransition{5*q2+s+1, b, 5*q1+goto_p1, word(b1, write)});
-                    else  // RIGHT rule: [q1] s@b RHS => [δ(q1,write)] goto_p1@RHS
-                        if (b1 == write)
-                            pds.push_back(PDSTransition{5*q1+s+1, b, 5*q2+goto_p1, word()});
-                }
-        }
-    return pds;
-}
 
 uint64_t step_NFA_mask(BinFA const& nfa, uint64_t mask, uint8_t bit)
 {
@@ -110,14 +80,6 @@ uint64_t step_NFA_mask(BinFA const& nfa, uint64_t mask, uint8_t bit)
     for (int i=0; mask; i++, mask>>=1)
         if (mask&1)
             out |= nfa.T[2*i+bit];
-    return out;
-}
-
-uint64_t multi_step_NFA(BinFA const& nfa, uint64_t initial_state, Word bits)
-{
-    uint64_t out = uint64_t{1} << initial_state;
-    for (int i=0; i < bits.l; i++)
-        out = step_NFA_mask(nfa, out, (bits.le>>i)&1);
     return out;
 }
 
@@ -134,19 +96,43 @@ bool test_zero_stacks(BinFA const& nfa, uint64_t initial_state=1)
 BinFA right_half_tape_NFA(TM tm, BinFA const& dfa)
 {
     auto nP = 5*dfa.n + 1;
-    auto pds_transitions = quotient_PDS(tm, dfa);
     auto nfa = BinFA{nP};
     bool grew = true;
     nfa.T[0] = nfa.T[1] = 1<<0;
-    do {
-        grew = false;
-        for (auto t: pds_transitions) {
-            auto new_Tjb = nfa.T[2*t.f+t.r] | multi_step_NFA(nfa, t.t, t.w);
-            if (nfa.T[2*t.f+t.r] != new_Tjb) {
-                nfa.T[2*t.f+t.r] = new_Tjb;
-                grew = true;
+
+    // N. B.: This inlines the Python version's quotient_PDS() function.
+    for (int s = 0; s < 5; s++)
+        for (uint8_t b = 0; b < 2; b++) {
+            uint8_t write = tm[6*s+3*b+0], move = tm[6*s+3*b+1], goto_p1 = tm[6*s+3*b+2];
+            for (uint64_t q1 = 0; q1 < dfa.n; q1++) {
+                if (!goto_p1) // HALT rule for s@b
+                    nfa.T[2*(5*q1+s+1)+b] |= uint64_t{1} << 0;
+                else if (!move) {  // RIGHT rule: [q1] s@b RHS => [δ(q1,write)] goto_p1@RHS
+                    uint64_t q2 = dfa.T[2*q1+write];
+                    nfa.T[2*(5*q1+s+1)+b] |= uint64_t{1} << (5*q2+goto_p1);
+                }
             }
         }
+
+    do {
+        grew = false;
+        for (int s = 0; s < 5; s++)
+            for (uint8_t b = 0; b < 2; b++) {
+                uint8_t write = tm[6*s+3*b+0], move = tm[6*s+3*b+1], goto_p1 = tm[6*s+3*b+2];
+                if (goto_p1 && move)  // LEFT rule: [δ(q1,b1)] s@b RHS => [q1] goto_p1@b1 write RHS
+                    for (uint64_t q1 = 0; q1 < dfa.n; q1++)
+                        for (uint8_t b1 = 0; b1 < 2; b1++) {
+                            uint64_t q2 = dfa.T[2*q1+b1];
+                            auto new_Tjb = uint64_t{1} << (5*q1+goto_p1);
+                            new_Tjb = step_NFA_mask(nfa, new_Tjb, b1);
+                            new_Tjb = step_NFA_mask(nfa, new_Tjb, write);
+                            new_Tjb |= nfa.T[2*(5*q2+s+1)+b];
+                            if (nfa.T[2*(5*q2+s+1)+b] != new_Tjb) {
+                                nfa.T[2*(5*q2+s+1)+b] = new_Tjb;
+                                grew = true;
+                            }
+                        }
+            }
     } while (grew);
     return nfa;
 }
