@@ -190,6 +190,6 @@ if __name__ == '__main__':
         tm = get_machine_i(args.db, seed)
         ctl = ctl_search(tm, args.l)
         if ctl and not args.quiet:
-            print(seed, 'infinite', ctl_search(tm, args.l), sep=', ')
+            print(seed, 'infinite', ctl, sep=', ')
         else:
             print(seed, 'infinite' if ctl else 'undecided', sep=', ')
