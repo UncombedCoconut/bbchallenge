@@ -246,12 +246,12 @@ class RewriteSystem:
                 if succ is not self.start:
                     break
             else:
-                # If the start word isn't rewritten, it's halting! Someone handed us a trivial case.
+                # If the start word isn't rewritten, the entire machine is either halting or a cycler.
                 did_something = bool(self.rewrites)
                 for rewrite in self.rewrites:
                     self._add_word('unreachable', rewrite.f)
                 self.rewrites.clear()
-                break
+                return True
             if keep is None:
                 keep = [max_dist[root][i] > 0 and di[i] > 0 for i, di in enumerate(max_dist)]
             if keep[root]:
