@@ -12,11 +12,10 @@ Once that's installed, initial setup might look like:
 ```
 $ git submodule update --init
 $ pypy3 -m ensurepip && pypy3 -m pip install -U pip wheel
-$ pypy3 -m pip install automata-lib    numpy pygobject xdot    pillow tabulate
+$ pypy3 -m pip install automata-lib    numpy pygobject xdot
 ```
 (This clones the standard `bbchallenge-py` project we use,
-initializes PyPy's package management,
-and installs 3 groups of libraries -- to provide regex output, visualize TMs with `interactive.py`, and stop `bbchallenge-py` from crashing for no reason.)
+initializes PyPy's package management, and installs 3 groups of libraries -- for the deciders' regex output, and `interactive.py`'s visualization.)
 
 ### Deciders
 * `decide_closed_tape_language_l2r.py` is the star of the show: it efficiently finds regular languages which can tell an eventually-halting TM configuration aprt from the initial one, by means explained by script docstrings and comments.
