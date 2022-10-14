@@ -144,6 +144,9 @@ class RewriteSystem:
         srs.start = reversed(self.start)
         return srs
 
+    def starts_in_state(self, typ):
+        return any(Rewrite(x, x).apply_to(self.start, as_tape=True) for x in self.special_words[typ])
+
     def read(self, machine):
         for i in range(5):
             for j, case in enumerate((str.lower, str.upper)):
