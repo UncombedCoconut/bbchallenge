@@ -1,7 +1,7 @@
 #!/usr/bin/pypy3
 # SPDX-FileCopyrightText: 2022 Justin Blanchard <UncombedCoconut@gmail.com>
 # SPDX-License-Identifier: Apache-2.0 OR MIT
-from bbchallenge import get_machine_i, ithl
+from bbchallenge import get_header, get_machine_i, ithl
 
 
 def bin_dfa_iter(n):
@@ -65,11 +65,10 @@ def ctl_search(machine, nLmax, nRmax):
                 search(0, 0, 0, 0)
             except InterruptedError:
                 continue
-            ctl_print(L, nL, R, nR, accept)
-            return
+            return ctl_text(L, nL, R, nR, accept)
 
 
-def ctl_print(L, nL, R, nR, accept):
+def ctl_text(L, nL, R, nR, accept):
     if args.re:
         from automata.fa import nfa, gnfa
         from itertools import product
@@ -85,9 +84,10 @@ def ctl_print(L, nL, R, nR, accept):
                 head = ithl(s).upper() if b else ithl(s).lower()
                 transitions[f'L{l}'].setdefault(head, set()).add(f'R{r}')
         marvin = nfa.NFA(states=set(transitions), input_symbols=set('01aAbBcCdDeE'), transitions=transitions, initial_state='L0', final_states={'R0'})
-        print(gnfa.GNFA.from_nfa(marvin).to_regex())
+        return gnfa.GNFA.from_nfa(marvin).to_regex()
     else:
-        print(f'DFAs: {L=}, {R=}, accept:', *[f'{l}:{ithl(s)}@{b}:{r}' for l in range(nL) for s in range(5) for b in range(2) for r in range(nR) if accept[l][s][b][r]])
+        return ' '.join([f'DFAs: {L=}, {R=}, accept:'] +
+            [f'{l}:{ithl(s)}@{b}:{r}' for l in range(nL) for s in range(5) for b in range(2) for r in range(nR) if accept[l][s][b][r]])
 
 
 if __name__ == '__main__':
@@ -101,6 +101,9 @@ if __name__ == '__main__':
     args = ap.parse_args()
 
     for seed in args.seeds or range(int.from_bytes(get_header(args.db)[8:12], byteorder='big')):
-        print('='*40, seed, '='*40)
         machine = get_machine_i(args.db, seed)
-        ctl_search(machine, args.l, args.r)
+        ctl = ctl_search(machine, args.l, args.r)
+        if ctl:
+            print(seed, 'infinite', ctl, sep=', ')
+        else:
+            print(seed, 'undecided', sep=', ')
