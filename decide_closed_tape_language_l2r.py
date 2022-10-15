@@ -81,9 +81,10 @@ def right_half_tape_NFA(tm, dfa):
 def step_NFA_mask(T, mask, bit):
     ''' Given NFA transition table T (as in right_half_tape_NFA), a bitmask of possible states, and a bit, return the bitmask of possible next states. '''
     new = 0
-    for i, mi in enumerate(T[bit::2]):
-        if mask & (1<<i):
-            new |= mi
+    while mask:
+        lo_bit = mask & -mask
+        mask ^= lo_bit
+        new |= T[2*(lo_bit.bit_length()-1)+bit]
     return new
 
 def multi_step_NFA(T, initial_state, bits):

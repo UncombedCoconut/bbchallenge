@@ -69,12 +69,15 @@ def right_half_tape_NFA(srs, l_dfa):
             from_mask = multi_step_NFA(r_nfa, j, r[:-1])
             r_end = r[-1]
             to_mask = multi_step_NFA(r_nfa, k, w)
-            for j_end, old_Tjb in enumerate(r_nfa[r_end::2]):
-                if from_mask & (1 << j_end):
-                    new_Tjb = old_Tjb | to_mask
-                    if old_Tjb != new_Tjb:
-                        r_nfa[2*j_end + r_end] = new_Tjb
-                        grew = True
+            while from_mask:
+                lo_bit = from_mask & -from_mask
+                from_mask ^= lo_bit
+                j_end = lo_bit.bit_length() - 1
+                old_Tjb = r_nfa[2*j_end + r_end]
+                new_Tjb = old_Tjb | to_mask
+                if old_Tjb != new_Tjb:
+                    r_nfa[2*j_end + r_end] = new_Tjb
+                    grew = True
     return r_nfa, glue
 
 def ctl_search(srs, l_states_max):
