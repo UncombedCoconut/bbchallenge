@@ -68,7 +68,7 @@ def right_half_tape_NFA(tm, dfa):
     # Start with a recognizer for HALT configurations. (The paper demands no transitions to initial states, but a loop at HALT doesn't affect its proof.)
     T = [1, 1] + [0]*(2*nP-2)
     # Add the transitions described in [BEM97] section 2.2, until none of them are new.
-    grew = True
+    grew = first_iter = True
     while grew:
         grew = False
         for (j, b), (k, w) in transP:
@@ -76,6 +76,9 @@ def right_half_tape_NFA(tm, dfa):
             if T[2*j+b] != new_Tjb:
                 T[2*j+b] = new_Tjb
                 grew = True
+        if first_iter: # Very slight optimization: Transitions with no write correspond to static NFA edges, and are only needed once.
+            transP = [jr_kw for jr_kw in transP if jr_kw[1][1]]
+            first_iter = False
     return T
 
 def step_NFA_mask(T, mask, bit):

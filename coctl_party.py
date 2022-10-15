@@ -60,9 +60,7 @@ def right_half_tape_NFA(srs, l_dfa):
             j, r = mask.bit_length()-1, r[1:]
         jr_kw[0] = (j, r)
 
-    # TODO: Optimization: Pre-apply anything in transP where len(r)==1 and len(w)==0.
-
-    grew = True
+    grew = first_iter = True
     while grew:
         grew = False
         for (j, r), (k, w) in transP:
@@ -78,6 +76,9 @@ def right_half_tape_NFA(srs, l_dfa):
                 if old_Tjb != new_Tjb:
                     r_nfa[2*j_end + r_end] = new_Tjb
                     grew = True
+        if first_iter: # Very slight optimization: Transitions that simply eat a bit correspond to static NFA edges, and are only needed once.
+            transP = [jr_kw for jr_kw in transP if len(jr_kw[0][1]) != 1 or len(jr_kw[1][1]) != 0]
+            first_iter = False
     return r_nfa, glue
 
 def ctl_search(srs, l_states_max):
