@@ -86,14 +86,13 @@ class GUI(DotWidget):
 if __name__ == '__main__':
     from argparse import ArgumentParser
     ap = ArgumentParser(description='Try to simplify a TM as a string rewriting system.')
-    ap.add_argument('--db', help='Path to DB file', type=str, default='all_5_states_undecided_machines_with_global_header')
-    ap.add_argument('--splitf', help='Word(s) to split domains ("from" side) on', type=str, nargs='*', default=[])
-    ap.add_argument('--splitt', help='Word(s) to split codomains ("to" side) on', type=str, nargs='*', default=[])
-    ap.add_argument('--seed', help='DB seed number', type=int, default=7410754)
+    ap.add_argument('-d', '--db', help='Path to DB file', default='all_5_states_undecided_machines_with_global_header')
+    ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='+')
     args = ap.parse_args()
 
-    machine = get_machine_i(args.db, args.seed)
-    s = RewriteSystem(machine)
-    w = GUI(s)
-    DotWindow(widget=w).connect('delete-event', Gtk.main_quit)
+    for seed in args.seeds:
+        machine = get_machine_i(args.db, seed)
+        s = RewriteSystem(machine)
+        w = GUI(s)
+        DotWindow(widget=w).connect('delete-event', Gtk.main_quit)
     Gtk.main()

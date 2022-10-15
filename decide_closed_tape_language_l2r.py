@@ -180,10 +180,10 @@ class CTL:
 if __name__ == '__main__':
     from argparse import ArgumentParser
     ap = ArgumentParser(description='If a Closed Tape Language of given complexity proves a TM cannot halt, show it.')
-    ap.add_argument('--db', help='Path to DB file', type=str, default='all_5_states_undecided_machines_with_global_header')
-    ap.add_argument('-l', help='State limit for the left half-tape DFA. At worst, 5 (default) should be sub-second and 6 sub-minute.', type=int, default=5)
+    ap.add_argument('-d', '--db', help='Path to DB file', default='all_5_states_undecided_machines_with_global_header')
+    ap.add_argument('-l', help='State limit for the DFA consuming one side of the tape. -l5 (default) takes seconds per difficult TM.', type=int, default=5)
     ap.add_argument('-q', '--quiet', help='Do not output regexp proofs (for speed or to avoid depending on automata-lib)', action='store_true')
-    ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='*', default=[])
+    ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='*')
     args = ap.parse_args()
 
     for seed in args.seeds or range(int.from_bytes(get_header(args.db)[8:12], byteorder='big')):

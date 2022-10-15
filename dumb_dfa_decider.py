@@ -93,14 +93,14 @@ def ctl_print(L, nL, R, nR, accept):
 if __name__ == '__main__':
     from argparse import ArgumentParser
     ap = ArgumentParser(description='If a Closed Tape Language of given complexity proves a TM cannot halt, show it.')
-    ap.add_argument('--db', help='Path to DB file', type=str, default='all_5_states_undecided_machines_with_global_header')
+    ap.add_argument('-d', '--db', help='Path to DB file', default='all_5_states_undecided_machines_with_global_header')
     ap.add_argument('-l', help='Max DFA states for left side', type=int, default=4)
     ap.add_argument('-r', help='Max DFA states for right side', type=int, default=4)
-    ap.add_argument('--re', help='Output a regular expression (requires automata-lib)', action='store_true')
-    ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='*', default=[7410754])
+    ap.add_argument('--re', help='Output a regular expression (requires automata-lib)', action='store_false')
+    ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='*')
     args = ap.parse_args()
 
-    for seed in args.seeds:
+    for seed in args.seeds or range(int.from_bytes(get_header(args.db)[8:12], byteorder='big')):
         print('='*40, seed, '='*40)
         machine = get_machine_i(args.db, seed)
         ctl_search(machine, args.l, args.r)
