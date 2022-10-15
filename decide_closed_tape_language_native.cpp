@@ -3,6 +3,7 @@
 // Please use decide_closed_tape_language_l2r.py as the reference implementation.
 // This is a C++ translation with no attempt at clear presentation.
 
+#include <bit>
 #include <cstdint>
 #include <cstring>
 #include <cstdlib>
@@ -77,9 +78,11 @@ typedef const uint8_t TM[30];
 uint64_t step_NFA_mask(BinFA const& nfa, uint64_t mask, uint8_t bit)
 {
     uint64_t out = 0;
-    for (int i=0; mask; i++, mask>>=1)
-        if (mask&1)
-            out |= nfa.T[2*i+bit];
+    while (mask) {
+        uint64_t lo_bit = mask & -mask;
+        mask ^= lo_bit;
+        out |= nfa.T[2*std::countr_zero(lo_bit) + bit];
+    }
     return out;
 }
 
