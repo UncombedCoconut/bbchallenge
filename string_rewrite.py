@@ -347,7 +347,7 @@ class RewriteSystem:
 if __name__ == '__main__':
     from argparse import ArgumentParser
     ap = ArgumentParser(description='Try to simplify a TM as a string rewriting system.')
-    ap.add_argument('--db', help='Path to DB file', default='all_5_states_undecided_machines_with_global_header')
+    ap.add_argument('-db', '--db', help='Path to DB file', default='all_5_states_undecided_machines_with_global_header')
     ap.add_argument('--simulate', help='Show this many steps.', type=int, default=0)
     ap.add_argument('--splitf', help='Word(s) to split domains ("from" side) on', nargs='*', default=[])
     ap.add_argument('--splitt', help='Word(s) to split codomains ("to" side) on', nargs='*', default=[])
