@@ -43,18 +43,18 @@ def quotient_PDS(tm, dfa):
         This function yields the transitions.
         CAUTION: in this formulation the stack (corresponding to the TM's right half-tape) is finite, not infinite and eventually zero-filled. '''
     for s in range(5):
-        for b in range(2):
-            write, move, goto = tm[6*s+3*b : 6*s+3*(b+1)]
+        for r in range(2):
+            write, move, goto = tm[6*s+3*r : 6*s+3*(r+1)]
             for q1b1, q2 in enumerate(dfa):
                 q1, b1 = divmod(q1b1, 2)
-                if not goto: # HALT rule for s@b - just need one PDS transition per DFA state.
+                if not goto: # HALT rule for s@r - just need one PDS transition per DFA state.
                     if b1==0:
-                        yield (5*q1+s+1, b), (0, ())
-                elif move:  # LEFT rule: [δ(q1,b1)] s@b RHS => [q1] goto@b1 write RHS
-                    yield (5*q2+s+1, b), (5*q1+goto, (b1, write))
-                else:  # RIGHT rule: [q1] s@b RHS => [δ(q1,write)] goto@RHS
+                        yield (5*q1+s+1, r), (0, ())
+                elif move:  # LEFT rule: [δ(q1,b1)] s@r RHS => [q1] goto@b1 write RHS
+                    yield (5*q2+s+1, r), (5*q1+goto, (b1, write))
+                else:  # RIGHT rule: [q1] s@r RHS => [δ(q1,write)] goto@RHS
                     if b1 == write:
-                        yield (5*q1+s+1, b), (5*q2+goto, ())
+                        yield (5*q1+s+1, r), (5*q2+goto, ())
 
 def right_half_tape_NFA(tm, dfa):
     ''' The same [BEM97] paper constructs a specialized NFA recognizing those PDS configurations from which (e.g.) a halting one is reachable.
@@ -71,10 +71,10 @@ def right_half_tape_NFA(tm, dfa):
     grew = first_iter = True
     while grew:
         grew = False
-        for (j, b), (k, w) in transP:
-            new_Tjb = T[2*j+b] | multi_step_NFA(T, k, w)
-            if T[2*j+b] != new_Tjb:
-                T[2*j+b] = new_Tjb
+        for (j, r), (k, w) in transP:
+            new_Tjr = T[2*j+r] | multi_step_NFA(T, k, w)
+            if T[2*j+r] != new_Tjr:
+                T[2*j+r] = new_Tjr
                 grew = True
         if first_iter: # Very slight optimization: Transitions with no write correspond to static NFA edges, and are only needed once.
             transP = [jr_kw for jr_kw in transP if jr_kw[1][1]]

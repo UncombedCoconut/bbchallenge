@@ -105,14 +105,14 @@ BinFA right_half_tape_NFA(TM tm, BinFA const& dfa)
 
     // N. B.: This inlines the Python version's quotient_PDS() function.
     for (int s = 0; s < 5; s++)
-        for (uint8_t b = 0; b < 2; b++) {
-            uint8_t write = tm[6*s+3*b+0], move = tm[6*s+3*b+1], goto_p1 = tm[6*s+3*b+2];
+        for (uint8_t r = 0; r < 2; r++) {
+            uint8_t write = tm[6*s+3*r+0], move = tm[6*s+3*r+1], goto_p1 = tm[6*s+3*r+2];
             for (uint64_t q1 = 0; q1 < dfa.n; q1++) {
-                if (!goto_p1) // HALT rule for s@b
-                    nfa.T[2*(5*q1+s+1)+b] |= uint64_t{1} << 0;
-                else if (!move) {  // RIGHT rule: [q1] s@b RHS => [δ(q1,write)] goto_p1@RHS
+                if (!goto_p1) // HALT rule for s@r
+                    nfa.T[2*(5*q1+s+1)+r] |= uint64_t{1} << 0;
+                else if (!move) {  // RIGHT rule: [q1] s@r RHS => [δ(q1,write)] goto_p1@RHS
                     uint64_t q2 = dfa.T[2*q1+write];
-                    nfa.T[2*(5*q1+s+1)+b] |= uint64_t{1} << (5*q2+goto_p1);
+                    nfa.T[2*(5*q1+s+1)+r] |= uint64_t{1} << (5*q2+goto_p1);
                 }
             }
         }
@@ -120,18 +120,18 @@ BinFA right_half_tape_NFA(TM tm, BinFA const& dfa)
     do {
         grew = false;
         for (int s = 0; s < 5; s++)
-            for (uint8_t b = 0; b < 2; b++) {
-                uint8_t write = tm[6*s+3*b+0], move = tm[6*s+3*b+1], goto_p1 = tm[6*s+3*b+2];
-                if (goto_p1 && move)  // LEFT rule: [δ(q1,b1)] s@b RHS => [q1] goto_p1@b1 write RHS
+            for (uint8_t r = 0; r < 2; r++) {
+                uint8_t write = tm[6*s+3*r+0], move = tm[6*s+3*r+1], goto_p1 = tm[6*s+3*r+2];
+                if (goto_p1 && move)  // LEFT rule: [δ(q1,b1)] s@r RHS => [q1] goto_p1@b1 write RHS
                     for (uint64_t q1 = 0; q1 < dfa.n; q1++)
                         for (uint8_t b1 = 0; b1 < 2; b1++) {
                             uint64_t q2 = dfa.T[2*q1+b1];
-                            auto new_Tjb = uint64_t{1} << (5*q1+goto_p1);
-                            new_Tjb = step_NFA_mask(nfa, new_Tjb, b1);
-                            new_Tjb = step_NFA_mask(nfa, new_Tjb, write);
-                            new_Tjb |= nfa.T[2*(5*q2+s+1)+b];
-                            if (nfa.T[2*(5*q2+s+1)+b] != new_Tjb) {
-                                nfa.T[2*(5*q2+s+1)+b] = new_Tjb;
+                            auto new_Tjr = uint64_t{1} << (5*q1+goto_p1);
+                            new_Tjr = step_NFA_mask(nfa, new_Tjr, b1);
+                            new_Tjr = step_NFA_mask(nfa, new_Tjr, write);
+                            new_Tjr |= nfa.T[2*(5*q2+s+1)+r];
+                            if (nfa.T[2*(5*q2+s+1)+r] != new_Tjr) {
+                                nfa.T[2*(5*q2+s+1)+r] = new_Tjr;
                                 grew = true;
                             }
                         }

@@ -61,17 +61,17 @@ def right_half_tape_NFA(srs, l_dfa):
                     lo_bit = from_mask & -from_mask
                     from_mask ^= lo_bit
                     j_end = lo_bit.bit_length() - 1
-                    old_Tjb = r_nfa[2*j_end + r_end]
-                    new_Tjb = old_Tjb | to_mask
-                    if old_Tjb != new_Tjb:
-                        r_nfa[2*j_end + r_end] = new_Tjb
+                    old_Tjr = r_nfa[2*j_end + r_end]
+                    new_Tjr = old_Tjr | to_mask
+                    if old_Tjr != new_Tjr:
+                        r_nfa[2*j_end + r_end] = new_Tjr
                         grew = True
             else:
                 for r_end in 0, 1:
-                    old_Tjb = r_nfa[2*j + r_end]
-                    new_Tjb = old_Tjb | step_NFA_mask(r_nfa, to_mask, r_end)
-                    if old_Tjb != new_Tjb:
-                        r_nfa[2*j + r_end] = new_Tjb
+                    old_Tjr = r_nfa[2*j + r_end]
+                    new_Tjr = old_Tjr | step_NFA_mask(r_nfa, to_mask, r_end)
+                    if old_Tjr != new_Tjr:
+                        r_nfa[2*j + r_end] = new_Tjr
                         grew = True
         if first_iter: # Very slight optimization: Transitions that simply eat a bit correspond to static NFA edges, and are only needed once.
             transP = [jr_kw for jr_kw in transP if len(jr_kw[0][1]) != 1 or len(jr_kw[1][1]) != 0]
