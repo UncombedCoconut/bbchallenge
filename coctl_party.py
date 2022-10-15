@@ -16,20 +16,9 @@ def right_half_tape_NFA(srs, l_dfa):
     # NFA states: 0=halt, nL*(input_state) + dfa_state + 1.
 
     # Let's re-present the parts of the system that can lead to a halt, as before/after pairs of (NFA state ID | word).
-    # Since we can't do ε-transitions, ensure any "before" word has at least one bit on the right.
-    srs_trans = []
-    for rw in srs.rewrites:
-        if rw.f.r:
-            srs_trans.append((rw.f, rw.t))
-        else:
-            srs_trans.extend(((rw.f+'0', rw.t+'0'), (rw.f+'1', rw.t+'1')))
-    for hw in srs.special_words['halting']:
-        if hw.r:
-            srs_trans.append((hw, 0))
-        else:
-            srs_trans.extend(((hw+'0', 0), (hw+'1', 0)))
+    srs_trans = [(rw.f, rw.t) for rw in srs.rewrites] + [(hw, 0) for hw in srs.special_words['halting']]
     # Enumerate the states where TM/~ needs to consume a bit.
-    near_matches = sorted({w.s + w.r[:-i] for (w, _) in srs_trans for i in range(len(w.r))})
+    near_matches = sorted({w.s + w.r[:-i] for (w, _) in srs_trans for i in range(max(len(w.r), 1))})
     # Construct the transitions between these states, and record the state IDs for each symbol.
     r_nfa = [1, 1] + [0]*(2*nL*len(near_matches))
     glue = {}
@@ -64,18 +53,26 @@ def right_half_tape_NFA(srs, l_dfa):
     while grew:
         grew = False
         for (j, r), (k, w) in transP:
-            from_mask = multi_step_NFA(r_nfa, j, r[:-1])
-            r_end = r[-1]
             to_mask = multi_step_NFA(r_nfa, k, w)
-            while from_mask:
-                lo_bit = from_mask & -from_mask
-                from_mask ^= lo_bit
-                j_end = lo_bit.bit_length() - 1
-                old_Tjb = r_nfa[2*j_end + r_end]
-                new_Tjb = old_Tjb | to_mask
-                if old_Tjb != new_Tjb:
-                    r_nfa[2*j_end + r_end] = new_Tjb
-                    grew = True
+            if r:
+                from_mask = multi_step_NFA(r_nfa, j, r[:-1])
+                r_end = r[-1]
+                while from_mask:
+                    lo_bit = from_mask & -from_mask
+                    from_mask ^= lo_bit
+                    j_end = lo_bit.bit_length() - 1
+                    old_Tjb = r_nfa[2*j_end + r_end]
+                    new_Tjb = old_Tjb | to_mask
+                    if old_Tjb != new_Tjb:
+                        r_nfa[2*j_end + r_end] = new_Tjb
+                        grew = True
+            else:
+                for r_end in 0, 1:
+                    old_Tjb = r_nfa[2*j + r_end]
+                    new_Tjb = old_Tjb | step_NFA_mask(r_nfa, to_mask, r_end)
+                    if old_Tjb != new_Tjb:
+                        r_nfa[2*j + r_end] = new_Tjb
+                        grew = True
         if first_iter: # Very slight optimization: Transitions that simply eat a bit correspond to static NFA edges, and are only needed once.
             transP = [jr_kw for jr_kw in transP if len(jr_kw[0][1]) != 1 or len(jr_kw[1][1]) != 0]
             first_iter = False
