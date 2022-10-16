@@ -145,7 +145,7 @@ class RewriteSystem:
         return srs
 
     def starts_in_state(self, typ):
-        return any(Rewrite(x, x).apply_to(self.start, as_tape=True) for x in self.special_words[typ])
+        return any(Rewrite(x, x).apply_to(self.start, as_tape=True) is not self.start for x in self.special_words[typ])
 
     def read(self, machine):
         for i in range(5):
@@ -241,26 +241,26 @@ class RewriteSystem:
                 for j, dj in enumerate(max_dist):
                     di[j] = max(di[j], di[k] + dk[j])
 
-        keep = None  # To be calculated: for each rewrite, whether one can reach it and loop from the starting state.
-        # Before we delete all rules not satisfying this property, we must advance the starting state.
+        # Advance the start until the sequence of actually-followed rewrites is ready to loop.
+        before = {}
+        start = self.start
         while True:
-            for root, rewrite in enumerate(self.rewrites):
-                succ = rewrite.apply_to(self.start, as_tape=True)
-                if succ is not self.start:
-                    break
-            else:
+            succ, root = self.step(start)
+            if root is None:
                 # If the start word isn't rewritten, the entire machine is either halting or a cycler.
-                did_something = bool(self.rewrites)
+                did_something = bool(self.rewrites) or (self.start != succ)
+                self.start = succ
                 for rewrite in self.rewrites:
                     self._add_word('unreachable', rewrite.f)
                 self.rewrites.clear()
                 return True
-            if keep is None:
-                keep = [max_dist[root][i] > 0 and di[i] > 0 for i, di in enumerate(max_dist)]
-            if keep[root]:
+            elif before.setdefault(root, start) is not start:
+                did_something |= (self.start != before[root])
+                self.start = before[root]
                 break
-            self.start = succ
-            did_something = True
+            start = succ
+
+        keep = [max_dist[root][i] > 0 and di[i] > 0 for i, di in enumerate(max_dist)] # Can each rewrite have the root in its past and a loop in its future?
 
         for i, rewrite in enumerate(self.rewrites):
             if not keep[i]:
@@ -329,17 +329,20 @@ class RewriteSystem:
             did_something = True
         return did_something
 
+    def step(self, w):
+        for i, rw in enumerate(self.rewrites):
+            x = rw.apply_to(w, as_tape=True)
+            if x is not w:
+                return x, i
+        return w, None
+
     def simulate(self, steps):
         rules_used = []
         w = self.start
         for _ in range(steps):
-            for i, rw in enumerate(self.rewrites):
-                x = rw.apply_to(w, as_tape=True)
-                if x is w: continue
-                w = x
-                rules_used.append(i)
-                print(w)
-                break
+            w, i = self.step(w)
+            rules_used.append(i)
+            print(w)
         delimiter = ',' if len(self.rewrites)>10 else ''
         print('Rules used:', delimiter.join(map(str, rules_used)))
         print('Frequency:', Counter(rules_used).most_common())
