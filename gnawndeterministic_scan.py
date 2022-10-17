@@ -160,7 +160,7 @@ if __name__ == '__main__':
     ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='*', default=[])
     args = ap.parse_args()
 
-    searches = [Search(n) for n in reversed(range(args.n, args.x, -1))]
+    searches = [Search(n) for n in reversed(range(args.l, args.x, -1))]
     for seed in args.seeds or range(int.from_bytes(get_header(args.db)[8:12], byteorder='big')):
         tm = get_machine_i(args.db, seed)
         attempts = (search(tm, Mode[args.mode], mirrored=mirrored) for search in searches for mirrored in (False, True))
