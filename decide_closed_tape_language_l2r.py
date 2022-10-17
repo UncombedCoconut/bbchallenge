@@ -105,7 +105,7 @@ def test_zero_stacks(T, initial_state=1):
         old, new = new, new | step_NFA_mask(T, new, 0)
     return bool(new & 1)
 
-def ctl_search(tm, l_states_max):
+def ctl_search(tm, l_states_max, l_states_exclude=0):
     ''' Return a Closed Tape Language which recognizes all halting configurations of the TM but not the intial state... if we find one. '''
     # Construct the TM's mirror image (left/right moves reversed), so that (despite the above asymmetry) we can start the search on either side.
     mirror_tm = bytearray(tm)
@@ -113,7 +113,7 @@ def ctl_search(tm, l_states_max):
         mirror_tm[i] ^= 1
     mirror_tm = bytes(mirror_tm)
 
-    for l_states in range(1, l_states_max+1):
+    for l_states in range(l_states_exclude+1, l_states_max+1):
         for mirrored in False, True:
             for l_dfa in binary_DFAs(l_states):
                 r_nfa = right_half_tape_NFA(mirror_tm if mirrored else tm, l_dfa)
@@ -186,13 +186,14 @@ if __name__ == '__main__':
     ap = ArgumentParser(description='If a Closed Tape Language of given complexity proves a TM cannot halt, show it.')
     ap.add_argument('-d', '--db', help='Path to DB file', default='all_5_states_undecided_machines_with_global_header')
     ap.add_argument('-l', help='State limit for the DFA consuming one side of the tape. -l5 (default) takes seconds per difficult TM.', type=int, default=5)
+    ap.add_argument('-x', help='Exclude DFAs this small. (Assume we tried already.).', type=int, default=0)
     ap.add_argument('-q', '--quiet', help='Do not output regexp proofs (for speed or to avoid depending on automata-lib)', action='store_true')
     ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='*')
     args = ap.parse_args()
 
     for seed in args.seeds or range(int.from_bytes(get_header(args.db)[8:12], byteorder='big')):
         tm = get_machine_i(args.db, seed)
-        ctl = ctl_search(tm, args.l)
+        ctl = ctl_search(tm, args.l, args.x)
         if ctl and not args.quiet:
             print(seed, 'infinite', ctl, sep=', ')
         else:

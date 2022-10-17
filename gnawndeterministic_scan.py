@@ -154,7 +154,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s %(levelname)s: %(message)s')
     ap = ArgumentParser(description='Try to prove the supplied Turing Machines do not halt.')
     ap.add_argument('-d', '--db', help='Path to DB file', default='all_5_states_undecided_machines_with_global_header')
-    ap.add_argument('-n', help='Size limit for the state machine (NFA) that should gnaw on the tape.', type=int, default=5)
+    ap.add_argument('-l', help='Size limit for the state machine (NFA) that should gnaw on the tape.', type=int, default=5)
     ap.add_argument('-x', help='Exclude DFAs this small. (Assume we tried already.).', type=int, default=0)
     ap.add_argument('-m', '--mode', help='Level of detail to output.', choices=[m.name for m in Mode], default='re')
     ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='*', default=[])

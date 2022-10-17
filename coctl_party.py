@@ -78,11 +78,11 @@ def right_half_tape_NFA(srs, l_dfa):
             first_iter = False
     return r_nfa, glue
 
-def ctl_search(srs, l_states_max):
+def ctl_search(srs, l_states_max, l_states_exclude=0):
     ''' Return a Closed Tape Language which recognizes all halting configurations of the TM but not the intial state... if we find one. '''
     mirror_srs = srs.mirror()
 
-    for l_states in range(1, l_states_max+1):
+    for l_states in range(l_states_exclude+1, l_states_max+1):
         for mirrored in False, True:
             for l_dfa in binary_DFAs(l_states):
                 working_srs = mirror_srs if mirrored else srs
@@ -152,6 +152,7 @@ if __name__ == '__main__':
     ap = ArgumentParser(description='Try to prove TMs infinite by partitioning the configurations and applying co-CTL.')
     ap.add_argument('-d', '--db', help='Path to DB file', default='all_5_states_undecided_machines_with_global_header')
     ap.add_argument('-l', help='State limit for the DFA consuming one side of the tape. -l5 (default) takes seconds per difficult TM.', type=int, default=5)
+    ap.add_argument('-x', help='Exclude DFAs this small. (Assume we tried already.).', type=int, default=0)
     ap.add_argument('-q', '--quiet', help='Do not output regexp proofs (for speed or to avoid depending on automata-lib)', action='store_true')
     ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='*')
     args = ap.parse_args()
@@ -163,7 +164,7 @@ if __name__ == '__main__':
         if not srs.rewrites: # Accidentally solved already?
             print(seed, 'halts' if srs.starts_in_state('halting') else 'infinite, cycler', sep=', ')
             continue
-        ctl = ctl_search(srs, args.l)
+        ctl = ctl_search(srs, args.l, args.x)
         if ctl and not args.quiet:
             reason = dict(coctl=str(ctl), start=str(srs.start), rewritten='|'.join(str(rw.f) for rw in srs.rewrites)) | {k: '|'.join(map(str, v)) for k,v in srs.special_words.items() if v}
             print(seed, 'infinite', reason, sep=', ')
