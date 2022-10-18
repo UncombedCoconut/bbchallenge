@@ -13,7 +13,7 @@ ExactlyOne = lambda conds: PbEq([(cond, 1) for cond in conds], 1)
 
 # Special state IDs
 DFA_INIT = TM_INIT = 0
-NFA_HALT = 'HALT'
+NFA_HALT = 'Z'
 
 class Mode(IntEnum):
     decision, model, nfa, re = range(4)
@@ -34,9 +34,9 @@ class Search:
         self._tm_right = {(F, r): Bool(f'TM_{F}{r}_right') for (F, r) in product(self.Q_tm, range(2))}
         self._tm_halts = {(F, r): Bool(f'TM_{F}{r}_halts') for (F, r) in product(self.Q_tm, range(2))}
         self._tm_to = {(F, r, T): Bool(f'TM_{F}{r}_to_{T}') for (F, r, T) in product(self.Q_tm, range(2), self.Q_tm)}
-        self._dfa = {(q1, r, q2): Bool(f'dfa({q1}, {r}, {q2})') for (q1, r, q2) in product(self.Q_dfa, range(2), self.Q_dfa)}
-        self._nfa = {(x1, r, x2): Bool(f'nfa({x1}, {r}, {x2})') for (x1, r, x2) in product(self.Q_nfa, range(2), self.Q_nfa)}
-        self._accept = {x: Bool(f'accept({x})') for x in self.Q_nfa}
+        self._dfa = {(q1, r, q2): Bool(f'dfa_{q1}_{r}_{q2}') for (q1, r, q2) in product(self.Q_dfa, range(2), self.Q_dfa)}
+        self._nfa = {(x1, r, x2): Bool(f'nfa_{x1}_{r}_{x2}') for (x1, r, x2) in product(self.Q_nfa, range(2), self.Q_nfa)}
+        self._accept = {x: Bool(f'accept_{x}') for x in self.Q_nfa}
         # Set up most of the formulae ahead of time.
         self.z3.add(list(chain(self.dfa_rules(), self.nfa_rules(), self.tm_rules(), self.closure_rules())))
         logging.getLogger('\U0001f9ab'*3).info('Ready to solve for DFA size %s', n)
