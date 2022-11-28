@@ -83,6 +83,9 @@ class Search:
         # Once halted, always halted.
         yield self.nfa(NFA_HALT, 0, NFA_HALT)
         yield self.nfa(NFA_HALT, 1, NFA_HALT)
+        # Optimization: HALT shouldn't transition to a normal state. (It doesn't affect acceptance though.)
+        for (q, f, b) in product(self.Q_dfa, self.Q_tm, range(2)):
+                yield Not(self.nfa(NFA_HALT, b, (q, f)))
         # Trailing zeros are not necessary.
         for x, y in product(self.Q_nfa, repeat=2):
             yield Implies(And(self.nfa(x, 0, y), self.accept(y)), self.accept(x))
