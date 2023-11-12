@@ -1,7 +1,7 @@
 #!/usr/bin/pypy3
 # SPDX-FileCopyrightText: 2022 Justin Blanchard <UncombedCoconut@gmail.com>
 # SPDX-License-Identifier: Apache-2.0 OR MIT
-from bbchallenge import get_header, get_machine_i, ithl
+from bbchallenge import ithl
 
 
 def bin_dfa_iter(n):
@@ -91,19 +91,16 @@ def ctl_text(L, nL, R, nR, accept):
 
 
 if __name__ == '__main__':
-    from argparse import ArgumentParser
-    ap = ArgumentParser(description='If a Closed Tape Language of given complexity proves a TM cannot halt, show it.')
-    ap.add_argument('-d', '--db', help='Path to DB file', default='all_5_states_undecided_machines_with_global_header')
+    from bb_args import ArgumentParser, tm_args
+    ap = ArgumentParser(description='If a Closed Tape Language of given complexity proves a TM cannot halt, show it.', parents=[tm_args()])
     ap.add_argument('-l', help='Max DFA states for left side', type=int, default=4)
     ap.add_argument('-r', help='Max DFA states for right side', type=int, default=4)
     ap.add_argument('--re', help='Output a regular expression (requires automata-lib)', action='store_false')
-    ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='*')
     args = ap.parse_args()
 
-    for seed in args.seeds or range(int.from_bytes(get_header(args.db)[8:12], byteorder='big')):
-        machine = get_machine_i(args.db, seed)
-        ctl = ctl_search(machine, args.l, args.r)
+    for tm in args.machines:
+        ctl = ctl_search(tm, args.l, args.r)
         if ctl:
-            print(seed, 'infinite', ctl, sep=', ')
+            print(tm, 'infinite', ctl, sep=', ')
         else:
-            print(seed, 'undecided', sep=', ')
+            print(tm, 'undecided', sep=', ')

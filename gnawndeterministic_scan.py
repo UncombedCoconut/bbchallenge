@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2022 Justin Blanchard <UncombedCoconut@gmail.com>
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 from automata.fa import dfa, gnfa, nfa
-from bbchallenge import get_header, get_machine_i, ithl, L, R
+from bbchallenge import ithl, L, R
 from enum import IntEnum
 from itertools import chain, product
 import logging
@@ -153,22 +153,19 @@ def left_right_reversal(tm):
     return bytes(mirror_tm)
 
 if __name__ == '__main__':
-    from argparse import ArgumentParser
+    from bb_args import ArgumentParser, tm_args
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s %(levelname)s: %(message)s')
-    ap = ArgumentParser(description='Try to prove the supplied Turing Machines do not halt.')
-    ap.add_argument('-d', '--db', help='Path to DB file', default='all_5_states_undecided_machines_with_global_header')
+    ap = ArgumentParser(description='Try to prove the supplied Turing Machines do not halt.', parents=[tm_args()])
     ap.add_argument('-l', help='Size limit for the state machine (NFA) that should gnaw on the tape.', type=int, default=5)
     ap.add_argument('-x', help='Exclude DFAs this small. (Assume we tried already.).', type=int, default=0)
     ap.add_argument('-m', '--mode', help='Level of detail to output.', choices=[m.name for m in Mode], default='re')
-    ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='*', default=[])
     args = ap.parse_args()
 
     searches = [Search(n) for n in reversed(range(args.l, args.x, -1))]
-    for seed in args.seeds or range(int.from_bytes(get_header(args.db)[8:12], byteorder='big')):
-        tm = get_machine_i(args.db, seed)
+    for tm in args.machines:
         attempts = (search(tm, Mode[args.mode], mirrored=mirrored) for search in searches for mirrored in (False, True))
         solution = next(filter(None, attempts), None)
         if solution:
-            print(seed, 'infinite', solution, sep=', ')
+            print(tm, 'infinite', solution, sep=', ')
         else:
-            print(seed, 'undecided', sep=', ')
+            print(tm, 'undecided', sep=', ')

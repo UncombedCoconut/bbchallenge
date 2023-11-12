@@ -1,7 +1,7 @@
 #!/usr/bin/pypy3
 # SPDX-FileCopyrightText: 2022 Justin Blanchard <UncombedCoconut@gmail.com>
 # SPDX-License-Identifier: Apache-2.0 OR MIT
-from bbchallenge import get_header, get_machine_i, ithl
+from bbchallenge import ithl
 
 def binary_DFAs(n):
     ''' We wish to solve a TM modulo an equivalence relation on the left-of-head tape configurations.
@@ -182,19 +182,16 @@ class CTL:
 
 
 if __name__ == '__main__':
-    from argparse import ArgumentParser
-    ap = ArgumentParser(description='If a Closed Tape Language of given complexity proves a TM cannot halt, show it.')
-    ap.add_argument('-d', '--db', help='Path to DB file', default='all_5_states_undecided_machines_with_global_header')
+    from bb_args import ArgumentParser, tm_args
+    ap = ArgumentParser(description='If a Closed Tape Language of given complexity proves a TM cannot halt, show it.', parents=[tm_args()])
     ap.add_argument('-l', help='State limit for the DFA consuming one side of the tape. -l5 (default) takes seconds per difficult TM.', type=int, default=5)
     ap.add_argument('-x', help='Exclude DFAs this small. (Assume we tried already.).', type=int, default=0)
     ap.add_argument('-q', '--quiet', help='Do not output regexp proofs (for speed or to avoid depending on automata-lib)', action='store_true')
-    ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='*')
     args = ap.parse_args()
 
-    for seed in args.seeds or range(int.from_bytes(get_header(args.db)[8:12], byteorder='big')):
-        tm = get_machine_i(args.db, seed)
+    for tm in args.machines:
         ctl = ctl_search(tm, args.l, args.x)
         if ctl and not args.quiet:
-            print(seed, 'infinite', ctl, sep=', ')
+            print(tm, 'infinite', ctl, sep=', ')
         else:
-            print(seed, 'infinite' if ctl else 'undecided', sep=', ')
+            print(tm, 'infinite' if ctl else 'undecided', sep=', ')
