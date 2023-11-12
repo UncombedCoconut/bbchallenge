@@ -1,9 +1,11 @@
 #!/usr/bin/pypy3
 # SPDX-FileCopyrightText: 2022 Justin Blanchard <UncombedCoconut@gmail.com>
 # SPDX-License-Identifier: Apache-2.0 OR MIT
-from bbchallenge import get_machine_i, ithl, g
+from bbchallenge import ithl, g
 from collections import Counter
 from dataclasses import dataclass
+from functools import reduce
+import operator
 import re
 
 
@@ -125,11 +127,11 @@ class RewriteSystem:
     1. halting, 2. unreachable, 3. cycling, or 4. the "from" side of a Rewrite.
     '''
 
-    def __init__(self, machine):
+    def __init__(self, tm):
         self.special_words = {'halting': [], 'cycling': [], 'unreachable': []}
         self.rewrites = []
         self.start = Word(s='a')
-        for rewrite in self.read(machine):
+        for rewrite in self.read(tm):
             self._add_rule(rewrite)
 
     def __str__(self):
@@ -147,13 +149,13 @@ class RewriteSystem:
     def starts_in_state(self, typ):
         return any(Rewrite(x, x).apply_to(self.start, as_tape=True) is not self.start for x in self.special_words[typ])
 
-    def read(self, machine):
+    def read(self, tm):
         for i in range(5):
             for j, case in enumerate((str.lower, str.upper)):
                 s = ithl(i)
-                write = machine[6*i+3*j]
-                move = g(machine[6*i+3*j+1])
-                goto = ithl(machine[6*i+3*j+2]-1)
+                write = tm[6*i+3*j]
+                move = g(tm[6*i+3*j+1])
+                goto = ithl(tm[6*i+3*j+2]-1)
                 if goto >= 'A':
                     if move == 'L':
                         yield Rewrite(Word(l='0', s=case(s)), Word(s=goto.lower(), r='01'[write]))
@@ -246,6 +248,7 @@ class RewriteSystem:
         start = self.start
         while True:
             succ, root = self.step(start)
+            #print(f'{self.start=} {succ=} {None if root is None else self.rewrites[root]=}')
             if root is None:
                 # If the start word isn't rewritten, the entire machine is either halting or a cycler.
                 did_something = bool(self.rewrites) or (self.start != succ)
@@ -254,6 +257,8 @@ class RewriteSystem:
                     self._add_word('unreachable', rewrite.f)
                 self.rewrites.clear()
                 return True
+            elif max_dist[root][root] < 0:
+                before = {}
             elif before.setdefault(root, start) is not start:
                 did_something |= (self.start != before[root])
                 self.start = before[root]
@@ -306,6 +311,14 @@ class RewriteSystem:
         while any(self.split_rule(rewrite, side, word) for rewrite in self.rewrites):
             did_something = True
             self.prune()
+        return did_something
+
+    def sandwich(self):
+        did_something = False
+        for w in [rw.f for rw in self.rewrites]:
+            w = '0'+w if len(w.l)<len(w.r) else (w+'0' if len(w.r)<len(w.l) else '0'+w+'0')
+            did_something |= self.split_rules('f', w)
+        return did_something
 
     def simplify_once(self):
         cyclic_states = {rewrite.f.s for rewrite in self.rewrites if rewrite.f.s == rewrite.t.s}
@@ -338,7 +351,7 @@ class RewriteSystem:
 
     def simulate(self, steps):
         rules_used = []
-        w = self.start
+        w = '0'*8 + self.start + '0'*8
         for _ in range(steps):
             w, i = self.step(w)
             rules_used.append(i)
@@ -347,20 +360,46 @@ class RewriteSystem:
         print('Rules used:', delimiter.join(map(str, rules_used)))
         print('Frequency:', Counter(rules_used).most_common())
 
+    def split_first_cycle(self):
+        startpos = [None for _ in self.rewrites]
+        chain = []
+        w = self.start
+        while True:
+            w, i = self.step(w)
+            if startpos[i] is not None and chain[-1] is not self.rewrites[i]: # treat loops as 1 occurrence
+                del chain[:startpos[i]]
+                comp = reduce(operator.mul, chain)
+                print(f'{chain=} {comp=}')
+                return self.split_rules('f', comp.f)
+            startpos[i] = len(chain)
+            chain.append(self.rewrites[i])
+
+    def advance_start(self):
+        self.start, _ = self.step(self.start)
+        return self.split_rules('f', self.start)
+
+    def exponentiate(self, n):
+        exp, pow, res = 1, self.rewrites, None
+        while n:
+            if exp & n:
+                res = pow if res is None else list(filter(None, (x*y for x in res for y in pow)))
+                n ^= exp
+            pow = list(filter(None, (x*y for x in pow for y in pow)))
+            exp <<= 1
+        for x in res:
+            self.split_rules('f', x.f)
+
 if __name__ == '__main__':
-    from argparse import ArgumentParser
-    ap = ArgumentParser(description='Try to simplify a TM as a string rewriting system.')
-    ap.add_argument('-db', '--db', help='Path to DB file', default='all_5_states_undecided_machines_with_global_header')
+    from bb_args import ArgumentParser, tm_args
+    ap = ArgumentParser(description='Try to simplify a TM as a string rewriting system.', parents=[tm_args()])
     ap.add_argument('--simulate', help='Show this many steps.', type=int, default=0)
     ap.add_argument('--splitf', help='Word(s) to split domains ("from" side) on', nargs='*', default=[])
     ap.add_argument('--splitt', help='Word(s) to split codomains ("to" side) on', nargs='*', default=[])
-    ap.add_argument('seeds', help='DB seed numbers', type=int, nargs='+')
     args = ap.parse_args()
 
-    for seed in args.seeds:
-        print('='*40, seed, '='*40)
-        machine = get_machine_i(args.db, seed)
-        S = RewriteSystem(machine)
+    for tm in args.machines:
+        print('='*40, tm, '='*40)
+        S = RewriteSystem(tm)
         for word_str in args.splitf:
             S.split_rules('f', Word.from_str(word_str))
         for word_str in args.splitt:
