@@ -18,10 +18,9 @@ $ pypy3 -m pip install automata-lib    numpy pygobject xdot
 initializes PyPy's package management, and installs 3 groups of libraries -- for the deciders' regex output, and `interactive.py`'s visualization.)
 
 ### Deciders
-* `decide_closed_tape_language_l2r.py` is the star of the show: it efficiently finds regular languages which can tell an eventually-halting TM configuration aprt from the initial one, by means explained by script docstrings and comments.
-* `decide_closed_tape_language_native.cpp` reimplements the pure decision (`infinite`/`undecided`) in a stand-alone C++ program, which runs an order of magnitude faster. The code quality is not up to publishable standards.
+* For most purposes, this repository should be ignored in favor of my bbchallenge-official decider from [this repo](https://github.com/bbchallenge/bbchallenge-deciders/tree/main/decider-finite-automata-reduction), which is much faster.
+* `finite_automata_reduction.py` is the star of the show: it efficiently finds regular languages which can tell an eventually-halting TM configuration apart from the initial one, by means explained by script docstrings and comments.
 * `dumb_dfa_decider.py` is an older and simpler decider, whose search is purely brute force.
-* `coctl_party.py` is an experimental decider which starts by expressing the TM as a string rewriting system (PARTItioning the domain).
 * `gnawndeterministic_scan.py` uses a SAT solver to construct an NFA with an even stronger non-halting condition, which is nonetheless true.
 
 ### Analyzers
