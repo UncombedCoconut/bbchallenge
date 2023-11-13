@@ -1,9 +1,7 @@
-#!/usr/bin/pypy3
 # SPDX-FileCopyrightText: 2023 Justin Blanchard <UncombedCoconut@gmail.com>
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 from argparse import Action, ArgumentParser
-from bbchallenge import get_header, get_machine_i
-from bb_tm import TM
+from bb_db import DB, Index, TM
 from functools import cached_property
 
 def tm_args(nargs='*'):
@@ -12,6 +10,7 @@ def tm_args(nargs='*'):
     ap.add_argument('-d', '--db', help='Path to DB file', default='all_5_states_undecided_machines_with_global_header')
     ap.add_argument('-n', '--states', help='Number of TM states (for seed-DB TMs)', type=int, default=5)
     ap.add_argument('-s', '--symbols', help='Number of tape symbols (for seed-DB TMs)', type=int, default=2)
+    ap.add_argument('-i', '--index', help='Include all machines from this index file')
     ap.add_argument('machines', help='DB seed numbers', nargs=nargs, action=_TMAction)
     return ap
 
@@ -21,16 +20,28 @@ class _TMAction(Action):
 
 class BeaverColony:
     def __init__(self, namespace, values):
-        self._namespace = namespace
-        self._values = values
+        self._namespace, self._values = namespace, values
 
     @cached_property
-    def seeds(self):
-        return [int(v) for v in self._values] or range(int.from_bytes(get_header(self._namespace.db)[8:12], byteorder='big'))
+    def _index(self):
+        return Index(self._namespace.index)
+
+    @cached_property
+    def _db(self):
+        return DB(self._namespace.db, self._namespace.states, self._namespace.symbols)
+
+    def __len__(self):
+        return len(self._index) + len(self._values) or len(self._db)
 
     def __iter__(self):
-        with open(self._namespace.db, 'rb') as db:
-            header_size, tm_size = 30, 3*self._namespace.states*self._namespace.symbols
-            for seed in self.seeds:
-                db.seek(header_size + seed * tm_size)
-                yield TM(db.read(tm_size), self._namespace.states, self._namespace.symbols, seed)
+        with self._db:
+            for seed_or_text in self._values:
+                try:
+                    seed = int(seed_or_text)
+                    yield self._db[seed]
+                except ValueError:
+                    yield TM.from_text(seed_or_text)
+            for seed in self._index:
+                yield self._db[seed]
+            if not (self._index or self._values):
+                yield from self._db
