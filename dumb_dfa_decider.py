@@ -1,93 +1,65 @@
 #!/usr/bin/pypy3
 # SPDX-FileCopyrightText: 2022 Justin Blanchard <UncombedCoconut@gmail.com>
 # SPDX-License-Identifier: Apache-2.0 OR MIT
-from bbchallenge import ithl
+from bbchallenge import ithl, L
+from dfa_utils import iter_dfas
 
 
-def bin_dfa_iter(n):
-    ''' Models a deterministic finite automaton on the alphabet [01]. States are range(n). Initial state is 0.
-        Representation is a sequence of the 2n destinations: new_state = dfa[2*state+bit].
-        This is for TM tapes, starting at the outer edge, so we force a transition 0 -0-> 0.
-        The full tape-language DFA is to be formed by gluing two of these together at the middle:
-        accept or not based on (left_state, head_state, head_bit, right_state). '''
-    dfa = [0] * (2*n)
-    refs = [2] + [0]*(n-1)
-    states_used = 1
-    while True:
-        yield dfa, states_used
-        for i in reversed(range(1, 2*states_used)):
-            refs[dfa[i]] -= 1
-            if refs[dfa[i]]:
-                if dfa[i] < n-1:
-                    dfa[i] += 1
-                    refs[dfa[i]] += 1
-                    if dfa[i] == states_used:
-                        states_used += 1
-                        refs[0] += 2
-                    break
-                else:
-                    dfa[i] = 0
-                    refs[0] += 1
-            else:
-                dfa[i] = 0
-                refs[0] -= 1
-                states_used -= 1
-        else:
-            return
-
-
-def ctl_search(machine, nLmax, nRmax):
-    for L, nL in bin_dfa_iter(nLmax):
-        for R, nR in bin_dfa_iter(nRmax):
+def ctl_search(tm, nl, nr):
+    N, S = tm.states, tm.symbols
+    for l_dfa in iter_dfas(nl, S):
+        for r_dfa in iter_dfas(nr, S):
             try:
-                accept = [[[[False for r in range(nR)] for bit in range(2)] for state in range(5)] for l in range(nL)]
+                accept = [[[[False for qr in range(nr)] for s in range(S)] for state in range(N)] for ql in range(nl)]
                 # Close the language by searching for states besides the initial which we must accept.
-                def search(l, s, b, r):
-                    if accept[l][s][b][r]:
+                def search(ql, f, r, qr):
+                    if accept[ql][f][r][qr]:
                         return
-                    accept[l][s][b][r] = True
-                    write = machine[6*s+3*b]
-                    move = machine[6*s+3*b+1]
-                    goto = machine[6*s+3*b+2]-1
-                    if goto == -1:
+                    accept[ql][f][r][qr] = True
+                    w, d, t = tm.transition(f, r)
+                    if t == -1:
                         raise InterruptedError  # Meaning "we hit a halt", LOL.
-                    # Move (LEFT if move else RIGHT)
-                    for b2 in range(2):
-                        if move:  # LEFT
-                            for l2 in range(nL):
-                                if L[2*l2+b2] == l:
-                                    search(l2, goto, b2, R[2*r+write])
-                        else: # RIGHT
-                            for r2 in range(nR):
-                                if R[2*r2+b2] == r:
-                                    search(L[2*l+write], goto, b2, r2)
+                    for s in range(S):
+                        if d == L:
+                            for l2 in range(nl):
+                                if l_dfa[S*l2+s] == ql:
+                                    search(l2, t, s, r_dfa[S*qr+w])
+                        else: # d == R
+                            for r2 in range(nr):
+                                if r_dfa[S*r2+s] == qr:
+                                    search(l_dfa[S*ql+w], t, s, r2)
 
                 search(0, 0, 0, 0)
             except InterruptedError:
                 continue
-            return ctl_text(L, nL, R, nR, accept)
+            return ctl_text(l_dfa, r_dfa, accept)
 
 
-def ctl_text(L, nL, R, nR, accept):
+def ctl_text(l_dfa, r_dfa, accept):
+    nl, N, S, nr = len(accept), len(accept[0]), len(accept[0][0]), len(accept[0][0][0])
     if args.re:
         from automata.fa import nfa, gnfa
         from itertools import product
-        transitions = {f'L{l}': {'0': set(), '1': set()} for l in range(nL)} | {f'R{r}': {'0': set(), '1': set()} for r in range(nR)}
-        for l in range(nL):
-            transitions[f'L{l}']['0'].add(f'L{L[2*l+0]}')
-            transitions[f'L{l}']['1'].add(f'L{L[2*l+1]}')
-        for r in range(nR):
-            transitions[f'R{R[2*r+0]}']['0'].add(f'R{r}')
-            transitions[f'R{R[2*r+1]}']['1'].add(f'R{r}')
-        for (l, s, b, r) in product(range(nL), range(5), range(2), range(nR)):
-            if accept[l][s][b][r]:
-                head = ithl(s).upper() if b else ithl(s).lower()
-                transitions[f'L{l}'].setdefault(head, set()).add(f'R{r}')
-        marvin = nfa.NFA(states=set(transitions), input_symbols=set('01aAbBcCdDeE'), transitions=transitions, initial_state='L0', final_states={'R0'})
-        return gnfa.GNFA.from_nfa(marvin).to_regex()
+        transitions = ({f'L{ql}': {str(s): set() for s in range(S)} for ql in range(nl)}
+                     | {f'R{qr}': {str(s): set() for s in range(S)} for qr in range(nr)})
+        for ql in range(nl):
+            for s in range(S):
+                transitions[f'L{ql}'][f'{s}'].add(f'L{l_dfa[S*ql+s]}')
+        for qr in range(nr):
+            for s in range(S):
+                transitions[f'R{r_dfa[S*qr+s]}'][f'{s}'].add(f'R{qr}')
+        # Give automata-lib single-character head symbols to work with.
+        ord_to_head = {97 + S*f + r: f'({ithl(f)}{r})' for f in range(N) for r in range(S)}
+        input_symbols = {str(s) for s in range(S)}.union(map(chr, ord_to_head))
+        for (ql, f, r, qr) in product(range(nl), range(N), range(S), range(nr)):
+            if accept[ql][f][r][qr]:
+                head = chr(97 + S*f + r)
+                transitions[f'L{ql}'].setdefault(head, set()).add(f'R{qr}')
+        marvin = nfa.NFA(states=set(transitions), input_symbols=input_symbols, transitions=transitions, initial_state='L0', final_states={'R0'})
+        return gnfa.GNFA.from_nfa(marvin).to_regex().translate(ord_to_head)
     else:
-        return ' '.join([f'DFAs: {L=}, {R=}, accept:'] +
-            [f'{l}:{ithl(s)}@{b}:{r}' for l in range(nL) for s in range(5) for b in range(2) for r in range(nR) if accept[l][s][b][r]])
+        return ' '.join([f'DFAs: {l_dfa=}, {r_dfa=}, accept:'] +
+            [f'{ql}:{ithl(f)}@{s}:{qr}' for ql in range(nl) for f in range(N) for s in range(S) for qr in range(nr) if accept[ql][f][s][qr]])
 
 
 if __name__ == '__main__':

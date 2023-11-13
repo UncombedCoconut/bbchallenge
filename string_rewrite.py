@@ -1,7 +1,7 @@
 #!/usr/bin/pypy3
 # SPDX-FileCopyrightText: 2022 Justin Blanchard <UncombedCoconut@gmail.com>
 # SPDX-License-Identifier: Apache-2.0 OR MIT
-from bbchallenge import ithl, g
+from bbchallenge import ithl, L
 from collections import Counter
 from dataclasses import dataclass
 from functools import reduce
@@ -16,9 +16,6 @@ def flip(bit_char):
 @dataclass
 class Word:
     '''
-    We model a TM's state TM as a word in the language [01]*[a-eA-E][01]*.
-    Lower-case a-e represent the TM head in state A-E on top of a 0 bit.
-    Upper-case A-E represent the TM head in state A-E on top of a 1 bit.
     A "Word" is just a string (with designated left/state/right components).
     Finite tape segments which include the head are Words.
     TM states are Words modulo leading/trailing zeros.
@@ -58,7 +55,7 @@ class Word:
         return Word(self.r[::-1], self.s, self.l[::-1])
 
     def from_str(string):
-        return Word(*re.match('^([01]*)([a-eA-E])([01]*)$', string).groups())
+        return Word(*re.match('^(\d*)(\([A-Z0-9]*\))(\d*)$', string).groups())
 
 
 @dataclass
@@ -122,7 +119,7 @@ class Rewrite:
 
 class RewriteSystem:
     '''
-    A "deterministic rewrite system" over the language of tape words [01]*[a-eA-E][01]*.
+    A "deterministic rewrite system" over the language of tape words (consisting of tape symbols and one head state+reading symbol).
     The possible tape states are partitioned into those matching exactly one of a finite set of Words, which are:
     1. halting, 2. unreachable, 3. cycling, or 4. the "from" side of a Rewrite.
     '''
@@ -130,7 +127,7 @@ class RewriteSystem:
     def __init__(self, tm):
         self.special_words = {'halting': [], 'cycling': [], 'unreachable': []}
         self.rewrites = []
-        self.start = Word(s='a')
+        self.start = Word(s='(A0)')
         for rewrite in self.read(tm):
             self._add_rule(rewrite)
 
@@ -150,26 +147,20 @@ class RewriteSystem:
         return any(Rewrite(x, x).apply_to(self.start, as_tape=True) is not self.start for x in self.special_words[typ])
 
     def read(self, tm):
-        for i in range(5):
-            for j, case in enumerate((str.lower, str.upper)):
-                s = ithl(i)
-                write = tm[6*i+3*j]
-                move = g(tm[6*i+3*j+1])
-                goto = ithl(tm[6*i+3*j+2]-1)
-                if goto >= 'A':
-                    if move == 'L':
-                        yield Rewrite(Word(l='0', s=case(s)), Word(s=goto.lower(), r='01'[write]))
-                        yield Rewrite(Word(l='1', s=case(s)), Word(s=goto.upper(), r='01'[write]))
+        for f, r, w, d, t in tm.transitions():
+            if t >= 0:
+                for s in range(tm.symbols):
+                    if d == L:
+                        yield Rewrite(Word(l=str(s), s=f'({ithl(f)}{r})'), Word(s=f'({ithl(t)}{s})', r=str(w)))
                     else:
-                        yield Rewrite(Word(r='0', s=case(s)), Word(s=goto.lower(), l='01'[write]))
-                        yield Rewrite(Word(r='1', s=case(s)), Word(s=goto.upper(), l='01'[write]))
-                else:
-                    halting_word = Word(s=case(s))
-                    self._add_word('halting', halting_word)
-                    for k in reversed(range(len(self.rewrites))):
-                        if halting_word in self.rewrites[k].t:
-                            self._add_word('halting', self.rewrites[k].f)
-                            del self.rewrites[k]
+                        yield Rewrite(Word(r=str(s), s=f'({ithl(f)}{r})'), Word(s=f'({ithl(t)}{s})', l=str(w)))
+            else:
+                halting_word = Word(s=f'({ithl(f)}{r})')
+                self._add_word('halting', halting_word)
+                for k in reversed(range(len(self.rewrites))):
+                    if halting_word in self.rewrites[k].t:
+                        self._add_word('halting', self.rewrites[k].f)
+                        del self.rewrites[k]
 
     def _add_word(self, typ, word):
         ''' Add the given word to the given special_words list. To avoid redundancy, merge with adjacent words, e.g. 0e0|0e1 -> 0e. '''
