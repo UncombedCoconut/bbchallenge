@@ -61,6 +61,16 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
     ap = ArgumentParser(description='Convert Franse Faase verification files to 1-side DFAs.')
     ap.add_argument('paths', help='path to the Frans Faase SymbolicTM file', nargs='+')
+    ap.add_argument('-v', '--verify', help='Verify whether the proofs work.', action='store_true')
     args = ap.parse_args()
     for path in args.paths:
-        print(*to_dfas(path))
+        dfas = to_dfas(path)
+        if args.verify:
+            from bb_tm import TM
+            from finite_automata_reduction import test_solution
+            with open(path) as f:
+                tm = TM.from_text(next(f).strip())
+            for side in range(2):
+                print('LR'[side], 'DFA', 'PASS' if test_solution(tm, dfas[side], side) else 'FAIL', dfas[side])
+        else:
+            print(*dfas, sep=', ')
