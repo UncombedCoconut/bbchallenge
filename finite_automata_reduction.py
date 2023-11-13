@@ -75,6 +75,10 @@ def test_zero_stacks(T, initial_state=1):
         old, new = new, new | step_NFA_mask(T, new, 0)
     return bool(new & 1)
 
+def test_solution(tm, dfa, side=0):
+    """ Simpler interface:, return True if the DFA leads to a solution. (side indicates scan direction: 0==R means the DFA is for the left half-tape.) """
+    return not test_zero_stacks(right_half_tape_NFA(reversed(tm) if side else tm, dfa))
+
 def ctl_search(tm, l_states_max, l_states_exclude=0):
     ''' Return a Closed Tape Language which recognizes all halting configurations of the TM but not the intial state... if we find one. '''
     # Construct the TM's mirror image (left/right moves reversed), so that (despite the above asymmetry) we can start the search on either side.
