@@ -20,6 +20,8 @@ initializes PyPy's package management, and installs 3 groups of libraries -- for
 ### Deciders
 * For most purposes, this repository should be ignored in favor of my bbchallenge-official decider from [this repo](https://github.com/bbchallenge/bbchallenge-deciders/tree/main/decider-finite-automata-reduction), which is much faster.
 * `finite_automata_reduction.py` is the star of the show: it efficiently finds regular languages which can tell an eventually-halting TM configuration apart from the initial one, by means explained by script docstrings and comments.
+* `far_utils.py` adds utilities for working with these "FAR" proofs: given a TM and DFA proof on either side of the tape, the script can try to optimize the proof (returning a shorter DFA table that gets the job done), and also compute/optimize a DFA proof for the opposite side.
+* `frans_faase_to_dfa.py` can convert a [SymbolicTM](https://github.com/FransFaase/SymbolicTM) proof file to "FAR" proofs on each side. For the time being, it's wise to use its "verify" option to check the output, even if SymbolicTM validates the original proof...
 * `dumb_dfa_decider.py` is an older and simpler decider, whose search is purely brute force.
 * `gnawndeterministic_scan.py` uses a SAT solver to construct an NFA with an even stronger non-halting condition, which is nonetheless true.
 

@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2023 Justin Blanchard <UncombedCoconut@gmail.com>
 # SPDX-License-Identifier: Apache-2.0 OR MIT
+from collections import deque
 
 
 def iter_dfas(n, S):
@@ -32,3 +33,66 @@ def iter_dfas(n, S):
                 states_used -= 1
         else:
             return
+
+
+def bfs_ordered(dfa, S=2):
+    '''Return an equivalent DFA with states ordered by breadth-first search (and unreachable states stripped).'''
+    n, used = len(dfa)//S, 1
+    state_id = [None]*n
+    state_id[0] = 0
+    trans = []
+    bfs_q = deque((0,))
+    while bfs_q:
+        for _ in range(S):
+            trans.append(None)
+        q0 = bfs_q.popleft()
+        i0 = state_id[q0]
+        for s in range(S):
+            q1 = dfa[S*q0+s]
+            i1 = state_id[q1]
+            if i1 is None:
+                i1 = state_id[q1] = used
+                used += 1
+                bfs_q.append(q1)
+            trans[S*i0+s] = i1
+    return trans
+
+
+def reachable_states(dfa, S=2):
+    '''Return the number of reachable states: like len(bfs_ordered(dfa, S))//S, but faster.'''
+    reached = {0}
+    visiting = [0]
+    while visiting:
+        q0 = visiting.pop()
+        for s in range(S):
+            q1 = dfa[S*q0+s]
+            l0 = len(reached)
+            reached.add(q1)
+            if l0 != len(reached):
+                visiting.append(q1)
+    return len(reached)
+
+
+def product(dfas, S=2):
+    '''Return a DFA with a state per possible tuple of states reached in the component DFAs.'''
+    state_id = {(0,)*len(dfas): 0}
+    trans = []
+    bfs_q = deque(state_id)
+    while bfs_q:
+        for _ in range(S):
+            trans.append(None)
+        q0 = bfs_q.popleft()
+        i0 = state_id[q0]
+        for s in range(S):
+            q1 = tuple([u[S*q+s] for (u, q) in zip(dfas, q0)])
+            try:
+                i1 = state_id[q1]
+            except KeyError:
+                i1 = state_id[q1] = len(state_id)
+                bfs_q.append(q1)
+            trans[S*i0+s] = i1
+    return trans
+
+def redirect(dfa, q_old, q_new):
+    '''Return a DFA with transitions to "q_old" replaced with transitions to "q_new".'''
+    return [(q_new if x == q_old else x) for x in dfa]
