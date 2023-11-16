@@ -57,7 +57,7 @@ def optimize_proof(tm, dfa, side=0, sim_space=16, sim_time=2**15, verbose=True):
             if verbose:
                 print(f'>{len(q_reduced)//S}', end='', flush=True)
     if verbose:
-        print(f' => {len(q_reduced)//S}', flush=True)
+        print(f' => {len(dfa_reduced)//S}', flush=True)
     return dfa_reduced
 
 def complementary_dfa(tm, dfa, side):
