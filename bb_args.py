@@ -2,46 +2,55 @@
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 from argparse import Action, ArgumentParser
 from bb_db import DB, Index, TM
+from collections.abc import Sequence
 from functools import cached_property
 
-def tm_args(nargs='*'):
-    """Return an ArgumentParser that lets the user specify a DB and seeds (for instance), parsed into 'machines': Collection[TuringMachine]. """
+def tm_args():
+    """Return an ArgumentParser that lets the user specify a DB and seeds (for instance), parsed into 'machines': Sequence[TuringMachine]. """
     ap = ArgumentParser(add_help=False)
-    ap.add_argument('-d', '--db', help='Path to DB file', default='all_5_states_undecided_machines_with_global_header')
+    ap.add_argument('-d', '--db', help='Path to DB file', default=DB.DEFAULT_PATH)
     ap.add_argument('-n', '--states', help='Number of TM states (for seed-DB TMs)', type=int, default=5)
     ap.add_argument('-s', '--symbols', help='Number of tape symbols (for seed-DB TMs)', type=int, default=2)
-    ap.add_argument('-i', '--index', help='Include all machines from this index file')
-    ap.add_argument('machines', help='DB seed numbers', nargs=nargs, action=_TMAction)
+    ap.add_argument('-i', '--index', help='Include all machines from this index file', type=Index, action=_AddMachineList)
+    ap.add_argument('machines', help='DB seed numbers', nargs='*', action=_AddMachineList, default=BeaverColony())
     return ap
 
-class _TMAction(Action):
+class _AddMachineList(Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        setattr(namespace, self.dest, BeaverColony(namespace, values))
+        namespace.machines._namespace = namespace
+        if values and values is not self.default:
+            namespace.machines._lists.append(values)
 
-class BeaverColony:
-    def __init__(self, namespace, values):
-        self._namespace, self._values = namespace, values
-
-    @cached_property
-    def _index(self):
-        return Index(self._namespace.index)
+class BeaverColony(Sequence):
+    def __init__(self):
+        self._namespace = None
+        self._lists = []
 
     @cached_property
     def _db(self):
         return DB(self._namespace.db, self._namespace.states, self._namespace.symbols)
 
     def __len__(self):
-        return len(self._index) + len(self._values) or len(self._db)
+        return sum(map(len, self._lists or [self._db]))
+
+    def __getitem__(self, i):
+        for l in self._lists or [self._db]:
+            if i < len(l):
+                return self._tm(l[i])
+            i -= len(l)
+        raise IndexError('list index out of range')
 
     def __iter__(self):
         with self._db:
-            for seed_or_text in self._values:
-                try:
-                    seed = int(seed_or_text)
-                    yield self._db[seed]
-                except ValueError:
-                    yield TM.from_text(seed_or_text)
-            for seed in self._index:
-                yield self._db[seed]
-            if not (self._index or self._values):
-                yield from self._db
+            for l in self._lists or [self._db]:
+                for seed_or_text in l:
+                    yield self._tm(seed_or_text)
+
+    def _tm(self, seed_or_text):
+        if isinstance(seed_or_text, TM):
+            return seed_or_text
+        try:
+            seed = int(seed_or_text)
+            return self._db[seed]
+        except ValueError:
+            return TM.from_text(seed_or_text)

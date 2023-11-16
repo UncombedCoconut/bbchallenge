@@ -4,10 +4,11 @@ from bbchallenge import get_header
 from bb_tm import TM
 from collections.abc import Sequence
 from functools import cached_property
-import os
 
 class DB(Sequence):
-    def __init__(self, path, states, symbols):
+    DEFAULT_PATH = 'all_5_states_undecided_machines_with_global_header'
+
+    def __init__(self, path=DEFAULT_PATH, states=5, symbols=2):
         self._path, self._states, self._symbols = path, states, symbols
         self._file = None
         self._entered = 0
@@ -16,7 +17,7 @@ class DB(Sequence):
         return int.from_bytes(get_header(self._path)[8:12], byteorder='big')
 
     def __enter__(self):
-        if self._entered <= 0:
+        if self._file is None:
             self._file = open(self._path, 'rb')
         self._entered += 1
 
