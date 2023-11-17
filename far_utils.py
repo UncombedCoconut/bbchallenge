@@ -42,6 +42,9 @@ def optimize_proof(tm, dfa, side=0, sim_space=16, sim_time=2**15, verbose=True):
     identifications = [(q1, q2) for (q1, q2) in permutations(range(Q), 2) if all(after(q2, w)!=sink for w in non_sinking[q1])]
     identifications.sort(key=sort_key)
     dfa_reduced = dfa
+
+    if verbose:
+        print('LR'[side], end='')
     for iq, (q1, q2) in enumerate(identifications):
         q_unreduced = redirect(dfa, q1, q2)
         q_reduced = bfs_ordered(q_unreduced, S)
@@ -89,16 +92,21 @@ if __name__ == '__main__':
     ap = ArgumentParser(description='optimize a DFA proof', parents=[tm_args()])
     ap.add_argument('-l', '--left', help='try to beat this left-tape DFA', type=int, nargs='*')
     ap.add_argument('-r', '--right', help='try to beat this right-tape DFA', type=int, nargs='*')
-    ap.add_argument('-c', '--complete', help='using a 1-sided DFA, find one on the opposite side', action='store_true')
+    ap.add_argument('-c', '--complement', help='using a 1-sided DFA, find one on the opposite side', action='store_true')
     ap.add_argument('-x', '--sim-space', help='do a simulation, tracking this much tape, to constrain attempted optimizations', type=int, default=16)
     ap.add_argument('-t', '--sim-time', help='run the constraining simulation for this amount of time', type=int, default=2**15)
     args = ap.parse_args()
     for tm in args.machines:
-        dfas = [args.left, args.right]
-        if args.complete:
-            for side, dfa in enumerate(dfas):
-                dfas[1 - side] = dfas[1 - side] or complementary_dfa(tm, dfa, side)
-        for side, dfa in enumerate(dfas):
-            if dfa:
-                dfa = optimize_proof(tm, dfa, side, sim_space=args.sim_space, sim_time=args.sim_time)
-                print(tm, 'LR'[side], dfa)
+        best_dfa = [None, None]
+        new_dfa = [args.left, args.right]
+        while any(new_dfa):
+            cur_dfa, new_dfa = new_dfa, [None, None]
+            for side, dfa in enumerate(cur_dfa):
+                if dfa:
+                    dfa = optimize_proof(tm, dfa, side, sim_space=args.sim_space, sim_time=args.sim_time)
+                    if not best_dfa[side] or len(dfa) < len(best_dfa[side]):
+                        best_dfa[side] = dfa
+                        if args.complement:
+                            new_dfa[1 - side] = complementary_dfa(tm, dfa, side)
+        for side, dfa in enumerate(best_dfa):
+            print(tm, 'LR'[side], dfa)
