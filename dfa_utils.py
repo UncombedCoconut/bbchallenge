@@ -93,6 +93,28 @@ def product(dfas, S=2):
             trans[S*i0+s] = i1
     return trans
 
+
+def line_graph(dfa, S=2):
+    '''Return a DFA whose states correspond to the possible transitions of the original. In other words, augment the DFA's state with the history going back one step.'''
+    state_id = {(0, 0): 0}
+    trans = []
+    bfs_q = deque(state_id)
+    while bfs_q:
+        for _ in range(S):
+            trans.append(None)
+        q0, q1 = q0q1 = bfs_q.popleft()
+        i0 = state_id[q0q1]
+        for s in range(S):
+            q2 = dfa[S*q1+s]
+            q1q2 = q1, q2
+            try:
+                i1 = state_id[q1q2]
+            except KeyError:
+                i1 = state_id[q1q2] = len(state_id)
+                bfs_q.append(q1q2)
+            trans[S*i0+s] = i1
+    return trans
+
 def redirect(dfa, q_old, q_new):
     '''Return a DFA with transitions to "q_old" replaced with transitions to "q_new".'''
     return [(q_new if x == q_old else x) for x in dfa]
