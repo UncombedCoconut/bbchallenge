@@ -24,6 +24,9 @@ class WFA:
                 wfa.w.append(qw)
         return wfa
 
+    def to_text(self, tm_symbols):
+        return '_'.join([';'.join([f'{t},{w}' for (t, w) in group]) for group in batched(zip(self.t, self.w), tm_symbols)])
+
 @dataclass
 class ShortCert:
     tm: TM
@@ -37,6 +40,9 @@ class ShortCert:
                 case 0: tm = TM.from_text(line.strip())
                 case 1: l = WFA.from_text(line)
                 case 2: yield cls(tm, (l, WFA.from_text(line)))
+
+    def __str__(self):
+        return f'{self.tm}\n{self.wfas[0].to_text(self.tm.symbols)}\n{self.wfas[1].to_text(self.tm.symbols)}'
 
 def sink(dfa, symbols):
     out, = [q for q in range(len(dfa)//symbols) if all(t==q for t in dfa[q*symbols:(q+1)*symbols])]
@@ -86,6 +92,10 @@ COLOR = {
         8: 'violet', 7: 'violet', 6: 'violet', 5: 'violet',
         -8: 'blue', -7: 'blue', -6: 'blue', -5: 'blue',
         -4: 'red4', -3: 'red3', -2: 'red2', -1: 'red1', 0: 'black', 1: 'green1', 2: 'green2', 3: 'green3', 4: 'green4'}
+
+# This is a backport of a Python 3.12 standard library function, itertools.batched.
+def batched(it, n):
+    while batch := tuple(islice(it, n)): yield batch
 
 if __name__ == '__main__':
     ap = ArgumentParser(description='Visualize a MITMWFAR short certificate.')
