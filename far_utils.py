@@ -1,7 +1,7 @@
 #!/usr/bin/pypy3
 # SPDX-FileCopyrightText: 2023 Justin Blanchard <UncombedCoconut@gmail.com>
 # SPDX-License-Identifier: Apache-2.0 OR MIT
-from collections import defaultdict, deque, Counter
+from collections import deque
 from itertools import permutations
 from finite_automata_reduction import right_half_tape_NFA, test_solution, test_zero_stacks
 from dfa_utils import bfs_ordered, reachable_states, redirect
