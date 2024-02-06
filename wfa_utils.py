@@ -45,8 +45,8 @@ class ShortCert:
         return f'{self.tm}\n{self.wfas[0].to_text(self.tm.symbols)}\n{self.wfas[1].to_text(self.tm.symbols)}'
 
 def sink(dfa, symbols):
-    out, = [q for q in range(len(dfa)//symbols) if all(t==q for t in dfa[q*symbols:(q+1)*symbols])]
-    return out
+    sinks = [q for q in range(1, len(dfa)//symbols) if all(t==q for t in dfa[q*symbols:(q+1)*symbols])]
+    if len(sinks) == 1: return sinks[0]
 
 def add_weight(wfa, q, dw, tm):
     for qs, t in enumerate(wfa.t):
@@ -84,7 +84,8 @@ def save_dot(short_cert, filename):
                     case 0: print(f'        "L{q}" -> "L{t}" [label="{s}", color="{COLOR[w]}"]', file=f)
                     case 1: print(f'        "R{t}" -> "R{q}" [dir=back, label="{s}", color="{COLOR[w]}"]', file=f)
             #print('    }', file=f)
-        print(f'    {{ rank=same; "L{size[0]-1}"; "R{size[1]-1}" }}', file=f)
+        max_non_sink = [size_i - 1 - int(size_i-1==rip_i) for size_i, rip_i in zip(size, rip)]
+        print(f'    {{ rank=same; "L{max_non_sink[0]}"; "R{max_non_sink[1]}" }}', file=f)
         print('}', file=f)
 
 # I'll regret this eventually.
