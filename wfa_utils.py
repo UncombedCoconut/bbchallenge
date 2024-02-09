@@ -44,6 +44,64 @@ class ShortCert:
     def __str__(self):
         return f'{self.tm}\n{self.wfas[0].to_text(self.tm.symbols)}\n{self.wfas[1].to_text(self.tm.symbols)}'
 
+@dataclass
+class SpecialSets:
+    nonnegative: set[int]
+    nonpositive: set[int]
+
+    @classmethod
+    def from_text(cls, text):
+        return cls(*[set(map(int, filter(None, text.split(',')))) for text in text.strip().split('_')])
+
+    def __str__(self):
+        return '_'.join(','.join(map(str, s)) for s in (self.nonnegative, self.nonpositive))
+
+@dataclass(frozen=True, order=True)
+class Final(set):
+    f: int
+    r: int
+    ql: int
+    qr: int
+    weight_interval: tuple[float, float]
+
+    @classmethod
+    def from_text(cls, text):
+        f, r, ql, qr, w0, w1 = text.strip().split(',')
+        return cls(ord(f)-65, int(r), int(ql), int(qr), (float('-inf' if w0=='-' else w0), float('inf' if w1=='-' else w1)))
+
+    def __str__(self):
+        return f'{chr(self.f+65)},{self.r},{self.ql},{self.qr},{self.weight_interval[0]},{self.weight_interval[1]}'.replace('inf','-').replace('--','-').replace('.0','')
+
+class FinalSet(set):
+    @classmethod
+    def from_text(cls, text):
+        return cls(map(Final.from_text, filter(None, text.split('_'))))
+
+    def __str__(self):
+        return '_'.join(map(str, sorted(self)))
+
+@dataclass
+class FullCert:
+    tm: TM
+    wfas: tuple[WFA, WFA]
+    special_sets: tuple[SpecialSets, SpecialSets]
+    final_set: FinalSet
+
+    @classmethod
+    def parse(cls, file):
+        if isinstance(file, (str, bytes, PathLike)): file = open(file)
+        for i, line in enumerate(file):
+            match i%6:
+                case 0: tm = TM.from_text(line.strip())
+                case 1: l = WFA.from_text(line)
+                case 2: r =  WFA.from_text(line)
+                case 3: ls = SpecialSets.from_text(line)
+                case 4: rs = SpecialSets.from_text(line)
+                case 5: yield cls(tm, (l, r), (ls, rs), FinalSet.from_text(line))
+
+    def __str__(self):
+        return f'{self.tm}\n{self.wfas[0].to_text(self.tm.symbols)}\n{self.wfas[1].to_text(self.tm.symbols)}\n{self.special_sets[0]}\n{self.special_sets[1]}\n{self.final_set}'
+
 def sink(dfa, symbols):
     sinks = [q for q in range(1, len(dfa)//symbols) if all(t==q for t in dfa[q*symbols:(q+1)*symbols])]
     if len(sinks) == 1: return sinks[0]
