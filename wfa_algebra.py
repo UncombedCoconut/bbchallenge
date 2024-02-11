@@ -4,7 +4,7 @@ from math import gcd, lcm
 import re
 
 class Poset:
-    def __ge__(self, other): return other.__le__(self)
+    def __ge__(self, other): return self.__eq__(other) or not self.__le__(other)
     def __lt__(self, other): return not other.__le__(self)
     def __gt__(self, other): return not self.__le__(other)
 
@@ -101,7 +101,16 @@ class Series(Poset, Semiring):
     def from_text(cls, text):
         out = cls()
         monos = set()
-        for term in map(str.strip, text.split('+')):
+        # TODO: actually parse, move to "*" notation of https://en.wikipedia.org/wiki/Rational_series
+        terms = []
+        unclosed = 0
+        for term in text.split('+'):
+            if unclosed:
+                terms[-1] = f'{terms[-1]}+{term}'
+            else:
+                terms.append(term)
+            unclosed += term.count('(') - term.count(')')
+        for term in map(str.strip, terms):
             if term == '1':
                 monos.add(0)
             elif term == 'z':
@@ -168,10 +177,21 @@ class Matrix(Poset, Semiring):
     def __str__(self):
         elem_names = (_elem_name(clr, l_name, r_name) for l_name, cl in zip(self.l_basis, self.c) for r_name, clr in zip(self.r_basis, cl))
         return ' + '.join(filter(None, elem_names)) or '0'
+    def bra_text(self):
+        assert len(self.l_basis) == 1, 'called ket_text on a matrix of the wrong shape'
+        return str(self).replace(f'|{self.l_basis[0]}>', '')
+    def ket_text(self):
+        assert len(self.r_basis) == 1, 'called bra_text on a matrix of the wrong shape'
+        return str(self).replace(f'<{self.r_basis[0]}|', '')
 
     @classmethod
     def from_text(cls, text, l_basis, r_basis=None, coef_type=Series):
         out = cls(l_basis, r_basis)
+        # Allow vectors.
+        if len(out.l_basis) == 1 and '>' not in text:
+            text = text.replace('<', f'|{out.l_basis[0]}><')
+        if len(out.r_basis) == 1 and '<' not in text:
+            text = text.replace('>', f'><{out.r_basis[0]}|')
         for coef_text, l, r in re.findall(r' \+ (.*?)\|(.*?)><(.*?)\|', ' + '+text):
             coef_text = coef_text.rstrip('*')
             if coef_text.startswith('(') and coef_text.endswith(')'):
@@ -278,8 +298,8 @@ class PeriodicNatSubset:
     def from_text(cls, text):
         if not text.startswith('{'): raise ValueError(f'Malformed (unsigned) weight-set {text}')
         rems, _, rest = text[1:].partition('}')
-        rems = {int(v.strip() for v in rems.split(','))}
-        mod = int(rest.strip(' +N')) if rest else 1
+        rems = {int(v.strip()) for v in rems.split(',')}
+        mod = int(rest.strip(' +Nℕ')) if rest else 1
         return cls(rems, mod)
 
     def _scaled_rems(self, other):
