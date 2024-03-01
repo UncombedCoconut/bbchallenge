@@ -27,6 +27,9 @@ class WFA:
     def to_text(self, tm_symbols):
         return '_'.join([';'.join([f'{t},{w}' for (t, w) in group]) for group in batched(zip(self.t, self.w), tm_symbols)])
 
+    def __neg__(self):
+        return self.__class__(list(self.t), [-w for w in self.w])
+
 @dataclass
 class ShortCert:
     tm: TM
@@ -44,6 +47,12 @@ class ShortCert:
     def __str__(self):
         return f'{self.tm}\n{self.wfas[0].to_text(self.tm.symbols)}\n{self.wfas[1].to_text(self.tm.symbols)}'
 
+    def __reversed__(self):
+        return self.__class__(reversed(self.tm), (-self.wfas[1], -self.wfas[0]))
+
+    def __invert__(self):
+        return self  # It's meaningful for a FullCert, where there's a final/accepted set to invert.
+
 @dataclass
 class SpecialSets:
     nonnegative: set[int]
@@ -56,21 +65,43 @@ class SpecialSets:
     def __str__(self):
         return '_'.join(','.join(map(str, s)) for s in (self.nonnegative, self.nonpositive))
 
+    def __neg__(self):
+        return self.__class__(self.nonpositive, self.nonnegative)
+
 @dataclass(frozen=True, order=True)
-class Final(set):
+class Interval:
+    lower: int|float = float('-inf')
+    upper: int|float = float('inf')
+
+    @classmethod
+    def from_text(cls, text):
+        w0, w1 = text.strip().split(',')
+        return cls(float('-inf') if w0=='-' else int(w0), float('inf') if w1=='-' else int(w1))
+
+    def __str__(self):
+        return f'{self[0]},{self[1]}'.replace('-inf', '-').replace('inf', '-')
+
+    def __neg__(self):
+        return self.__class__(-self.upper, -self.lower)
+
+@dataclass(frozen=True, order=True)
+class Final:
     f: int
     r: int
     ql: int
     qr: int
-    weight_interval: tuple[float, float]
+    weight_interval: Interval
 
     @classmethod
     def from_text(cls, text):
-        f, r, ql, qr, w0, w1 = text.strip().split(',')
-        return cls(ord(f)-65, int(r), int(ql), int(qr), (float('-inf' if w0=='-' else w0), float('inf' if w1=='-' else w1)))
+        f, r, ql, qr, interval = text.strip().split(',', 4)
+        return cls(ord(f)-65, int(r), int(ql), int(qr), Interval.from_text(interval))
 
     def __str__(self):
-        return f'{chr(self.f+65)},{self.r},{self.ql},{self.qr},{self.weight_interval[0]},{self.weight_interval[1]}'.replace('inf','-').replace('--','-').replace('.0','')
+        return f'{chr(self.f+65)},{self.r},{self.ql},{self.qr},{self.weight_interval}'
+
+    def __reversed__(self):
+        return self.__class__(self.f, self.r, self.qr, self.ql, -self.weight_interval)
 
 class FinalSet(set):
     @classmethod
@@ -79,6 +110,9 @@ class FinalSet(set):
 
     def __str__(self):
         return '_'.join(map(str, sorted(self)))
+
+    def __reversed__(self):
+        return self.__class__(map(reversed, self))
 
 @dataclass
 class FullCert:
@@ -101,6 +135,12 @@ class FullCert:
 
     def __str__(self):
         return f'{self.tm}\n{self.wfas[0].to_text(self.tm.symbols)}\n{self.wfas[1].to_text(self.tm.symbols)}\n{self.special_sets[0]}\n{self.special_sets[1]}\n{self.final_set}'
+
+    def __reversed__(self):
+        return self.__class__(reversed(self.tm), (-self.wfas[1], -self.wfas[0]), (-self.special_sets[1], -self.special_sets[0]), reversed(self.final_set))
+
+    def __invert__(self):
+        raise NotImplementedError  # TODO: bucket the accept-intervals by head, invert each union of intervals, flatten.
 
 def sink(dfa, symbols):
     sinks = [q for q in range(1, len(dfa)//symbols) if all(t==q for t in dfa[q*symbols:(q+1)*symbols])]
