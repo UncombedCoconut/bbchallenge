@@ -128,22 +128,27 @@ class Series(Poset, Semiring):
 
     def __bool__(self): return bool(self.monos)
     def __copy__(self): return self.__class__(self.monos)
+    def __invert__(self): return self.__class__(~self.monos)
 
     def __eq__(self, other):
         other = self._as_series(other)
+        if other is None: return NotImplemented
         return self.monos == other.monos
     def __le__(self, other):
         other = self._as_series(other)
+        if other is None: return NotImplemented
         return self.monos <= other.monos
     def __add__(self, other):
         other = self._as_series(other)
+        if other is None: return NotImplemented
         return self.__class__(self.monos | other.monos)
-    def __iadd__(self, other):
-        other = self._as_series(other)
-        self.monos |= other.monos
-        return self
+#    def __iadd__(self, other):
+#        other = self._as_series(other)
+#        self.monos |= other.monos
+#        return self
     def __mul__(self, other):
         other = self._as_series(other)
+        if other is None: return NotImplemented
         return self.__class__(self.monos + other.monos)
     def conjugate(self):
         return self.__class__(-self.monos)
@@ -156,6 +161,8 @@ class Series(Poset, Semiring):
     def _as_series(self, other):
         if isinstance(other, Series):
             return other
+        if isinstance(other, Matrix):
+            return None  # HACK: punt scalar*vector etc.
         return self.one() if other else self.zero()
 
 
@@ -176,13 +183,8 @@ class Matrix(Poset, Semiring):
 
     def __str__(self):
         elem_names = (_elem_name(clr, l_name, r_name) for l_name, cl in zip(self.l_basis, self.c) for r_name, clr in zip(self.r_basis, cl))
-        return ' + '.join(filter(None, elem_names)) or '0'
-    def bra_text(self):
-        assert len(self.l_basis) == 1, 'called ket_text on a matrix of the wrong shape'
-        return str(self).replace(f'|{self.l_basis[0]}>', '')
-    def ket_text(self):
-        assert len(self.r_basis) == 1, 'called bra_text on a matrix of the wrong shape'
-        return str(self).replace(f'<{self.r_basis[0]}|', '')
+        # As a special case, if a side's basis is ('',), display as a vector.
+        return ' + '.join(filter(None, elem_names)).replace('*|><|', '').replace('|>', '').replace('<|', '') or '0'
 
     @classmethod
     def from_text(cls, text, l_basis, r_basis=None, coef_type=Series):
@@ -201,6 +203,7 @@ class Matrix(Poset, Semiring):
 
     def __bool__(self): return any(clr for cl in self.c for clr in cl)
     def __copy__(self): return self.__class__(self.l_basis, self.r_basis, self.c)
+    def __invert__(self): return self.__class__(self.l_basis, self.r_basis, [[(1-clr if isinstance(clr,int) else ~clr) for clr in cl] for cl in self.c])
 
     def __eq__(self, other):
         other = self._with_same_basis(other)
@@ -232,11 +235,41 @@ class Matrix(Poset, Semiring):
                 ol[i] = slr*other
         return out
 
+    def geometric_series(self):
+        cand = self
+        while True:
+            succ = cand.__copy__()
+            for i, ci in enumerate(succ.c):
+                ci[i] = ci[i].geometric_series() if ci[i] else 1
+            succ *= succ
+            if succ == cand:
+                return succ
+            cand = succ
+
+    def oplus(self, *others):
+        ''' the direct sum (block vector, or block diagonal matrix) self ⊕ other. '''
+        blocks = (self,) + others
+        vec_l = all(bi.l_basis == bj.l_basis for bi, bj in zip(blocks, blocks[1:]))
+        vec_r = all(bi.r_basis == bj.r_basis for bi, bj in zip(blocks, blocks[1:]))
+        l_basis = self.l_basis if vec_l else [bi for b in blocks for bi in b.l_basis]
+        r_basis = self.r_basis if vec_r else [bi for b in blocks for bi in b.r_basis]
+        out = self.__class__(l_basis, r_basis)
+        sl = sr = 0
+        for b in blocks:
+            for l, cl in enumerate(b.c):
+                out.c[sl + l][sr : sr + len(cl)] = cl
+            if not vec_l: sl += len(b.l_basis)
+            if not vec_r: sr += len(b.r_basis)
+        return out
+
     def conjugate(self):
+        return self.transpose()
+
+    def transpose(self, conjugate=True):
         out = self.__class__(self.r_basis, self.l_basis)
         for i in range(len(self.l_basis)):
             for j in range(len(self.r_basis)):
-                out.c[j][i] = self.c[i][j].conjugate()
+                out.c[j][i] = self.c[i][j].conjugate() if conjugate else self.c[i][j]
         return out
 
     def __getitem__(self, lr):
@@ -348,6 +381,26 @@ class PeriodicNatSubset:
                         break
                 else: yield e
 
+    def complement_minus(self, elements):
+        """Return ℕ - (self U elements) as a PeriodicNatSubset (as large as possible) and the set of leftover natural numbers. """
+        rems = set(range(self.mod))
+        rest = set()
+        for rem in self.rems:
+            rems.remove(rem % self.mod)
+            rest.update(range(rem % self.mod, rem, self.mod))
+        for e in sorted(elements):
+            if e in rest:
+                rest.remove(e)
+                continue
+            for rem in sorted(rems):
+                if rem > e: break
+                if (e - rem) % self.mod == 0:
+                    rems.remove(rem)
+                    q = (e - rem) // self.mod
+                    rest.update(range(rem, e, self.mod))
+                    rems.add(rem + (q + 1) * self.mod)
+        return PeriodicNatSubset(rems, self.mod), rest
+
 
 class WeightSet:
     """A set of integers representing the possible total weights on a path between WFA nodes.
@@ -382,6 +435,13 @@ class WeightSet:
 
     def __bool__(self):
         return any((self.elements, self.pos, self.neg))
+
+    def __invert__(self):
+        no = self.elements | {0} if 0 in self else self.elements
+        pos, elements = self.pos.complement_minus(no)
+        neg, elts_neg = self.neg.complement_minus(map(int.__neg__, no))
+        elements.update(map(int.__neg__, elts_neg))
+        return self.__class__(elements, pos, neg)
 
     def __eq__(self, other):
         return (self.elements, self.pos, self.neg) == (other.elements, other.pos, other.neg)
