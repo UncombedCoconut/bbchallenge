@@ -71,14 +71,16 @@ class WFACert:
         yield f'|$> = {self.final}'
 
     def _lines_graphical(self):
+        monos = lambda nonzero_coef: getattr(nonzero_coef, 'monos', {0})
+
         for i, (name, c0i) in enumerate(zip(self.initial.r_basis, self.initial.c[0])):
-            if c0i: yield f'Initial {name} {c0i.monos}'
+            if c0i: yield f'Initial {name} {monos(c0i)}'
         for infix, trans in self.transition.items():
             for l_name, cl in zip(trans.l_basis, trans.c):
                 for r_name, clr in zip(trans.r_basis, cl):
-                    if clr: yield f'Edge {l_name} {infix} {r_name} {clr.monos}'
+                    if clr: yield f'Edge {l_name} {infix} {r_name} {monos(clr)}'
         for i, (name, ci) in enumerate(zip(self.final.l_basis, self.final.c)):
-            if ci[0]: yield f'Final {name} {ci[0].monos}'
+            if ci[0]: yield f'Final {name} {monos(ci[0])}'
 
     @classmethod
     def parse(cls, file, verbosity=1):
@@ -96,7 +98,7 @@ class WFACert:
             elif m := match(r'States\s+(.*)', line):
                 states = m.group(1).split()
                 new.initial = Matrix(('',), states)
-                new.transition = {infix: Matrix(states, states) for infix in [str(s) for s in range(new.tm.symbols)] + [chr(65+q) + str(s) for q in range(new.tm.states) for s in range(new.tm.symbols)]}
+                new.transition = {infix: Matrix(states, states) for infix in [str(s) for s in range(new.tm.symbols)] + [chr(65+q) + str(s) for q in range(new.tm.states) for s in range(new.tm.symbols)] + ['Z']}
                 new.final = Matrix(states, ('',))
             elif m := match(r'<\^\| = (.*)', line):
                 new.initial = Matrix.from_text(m.group(1), new.initial.l_basis, new.initial.r_basis)
@@ -105,12 +107,12 @@ class WFACert:
             elif m := match(r'\|\$> = (.*)', line):
                 new.final = Matrix.from_text(m.group(1), new.final.l_basis, new.final.r_basis)
             elif m := match(r'Initial\s+([^\s]+)\s+(.*)', line):
-                new.initial[0, new.initial.r_basis.index(m.group(1))].monos |= WeightSet.from_text(m.group(2))
+                new.initial[0, new.initial.r_basis.index(m.group(1))] += Series(WeightSet.from_text(m.group(2)))
             elif m := match(r'Edge\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+(.*)', line):
                 trans = new.transition[m.group(2)]
-                trans[trans.l_basis.index(m.group(1)), trans.r_basis.index(m.group(3))].monos |= WeightSet.from_text(m.group(4))
+                trans[trans.l_basis.index(m.group(1)), trans.r_basis.index(m.group(3))] += Series(WeightSet.from_text(m.group(4)))
             elif m := match(r'Final\s+([^\s]+)\s+(.*)', line):
-                new.final[new.final.l_basis.index(m.group(1)), 0].monos |= WeightSet.from_text(m.group(2))
+                new.final[new.final.l_basis.index(m.group(1)), 0] += Series(WeightSet.from_text(m.group(2)))
             elif verbosity:
                 print('Input line not understood:', line, file=stderr)
         if new.tm is not None: yield new

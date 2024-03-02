@@ -344,7 +344,7 @@ class PeriodicNatSubset:
         s_rems, o_rems = self._scaled_rems(other)
         return PeriodicNatSubset(s_rems | o_rems, lcm(self.mod, other.mod))
 
-    def __ior__(self, other):
+    def __ror__(self, other):
         return self | other if other else self
 
     def __add__(self, other):
@@ -471,7 +471,7 @@ class WeightSet:
                 if pos is not None: raise ValueError(f'Unexpected weight-set term {term} following another positive term')
                 pos = PeriodicNatSubset.from_text(term[1:-1])
             elif term.startswith('{') and term.endswith('}'):
-                elements.update(int(v.strip()) for v in term.split(','))
+                elements.update(int(v.strip()) for v in term[1:-1].split(','))
             elif term.startswith('-(') and term.endswith(')'):
                 if neg is not None: raise ValueError(f'Unexpected weight-set term {term} following another positive term')
                 neg = PeriodicNatSubset.from_text(term[2:-1])
