@@ -182,8 +182,9 @@ class Matrix(Poset, Semiring):
         return out
 
     def __str__(self):
+        # As a special case, if a side's basis is ('',), display as a vector... or scalar.
+        if self.l_basis == self.r_basis == ('',): return str(self.c[0][0])
         elem_names = (_elem_name(clr, l_name, r_name) for l_name, cl in zip(self.l_basis, self.c) for r_name, clr in zip(self.r_basis, cl))
-        # As a special case, if a side's basis is ('',), display as a vector.
         return ' + '.join(filter(None, elem_names)).replace('*|><|', '').replace('|>', '').replace('<|', '') or '0'
 
     @classmethod
