@@ -87,6 +87,20 @@ def complementary_dfa(tm, dfa, side):
             trans[S*i0+s] = i1
     return trans
 
+def optimize_dfa_pair(tm, dfas, sim_space=16, sim_time=2**15, complement=False):
+    new_dfa = dfas
+    best_dfa = [None, None]
+    while any(new_dfa):
+        cur_dfa, new_dfa = new_dfa, [None, None]
+        for side, dfa in enumerate(cur_dfa):
+            if dfa:
+                dfa = optimize_proof(tm, dfa, side, sim_space=sim_space, sim_time=sim_time)
+                if not best_dfa[side] or len(dfa) < len(best_dfa[side]):
+                    new_dfa[side] = best_dfa[side] = dfa
+                    if complement:
+                        new_dfa[1 - side] = complementary_dfa(tm, dfa, side)
+    return best_dfa
+
 if __name__ == '__main__':
     from bb_args import ArgumentParser, tm_args
     ap = ArgumentParser(description='optimize a DFA proof', parents=[tm_args()])
@@ -97,16 +111,6 @@ if __name__ == '__main__':
     ap.add_argument('-t', '--sim-time', help='run the constraining simulation for this amount of time', type=int, default=2**15)
     args = ap.parse_args()
     for tm in args.machines:
-        best_dfa = [None, None]
-        new_dfa = [args.left, args.right]
-        while any(new_dfa):
-            cur_dfa, new_dfa = new_dfa, [None, None]
-            for side, dfa in enumerate(cur_dfa):
-                if dfa:
-                    dfa = optimize_proof(tm, dfa, side, sim_space=args.sim_space, sim_time=args.sim_time)
-                    if not best_dfa[side] or len(dfa) < len(best_dfa[side]):
-                        best_dfa[side] = dfa
-                        if args.complement:
-                            new_dfa[1 - side] = complementary_dfa(tm, dfa, side)
+        best_dfa = optimize_dfa_pair(tm, [args.left, args.right], sim_space=args.sim_space, sim_time=args.sim_time, complement=args.complement)
         for side, dfa in enumerate(best_dfa):
             print(tm, 'LR'[side], dfa)
