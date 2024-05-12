@@ -25,10 +25,10 @@ def main():
 def optimize_cert(sc, popen, verbose=True):
     dfas = [sc.wfas[side].t for side in range(2)]
     S = sc.tm.symbols
-    sort_key = lambda dq1q2: (_size_aggr(reachable_states(redirect(dfas[dq1q2[0]], dq1q2[1], dq1q2[2]), S), len(dfas[1-dq1q2[0]])//S), dq1q2[2], dq1q2[1])
+    sc_reduced = ShortCert(sc.tm, sc.wfas)
+    sort_key = lambda dq1q2: (_size_aggr(reachable_states(redirect(dfas[dq1q2[0]], dq1q2[1], dq1q2[2]), S), len(sc_reduced.wfas[1-dq1q2[0]].t)//S), dq1q2[2], dq1q2[1])
     identifications = [(side, q1, q2) for side in range(2) for (q1, q2) in permutations(range(len(sc.wfas[side].t)//S), 2)]
     identifications.sort(key=sort_key)
-    sc_reduced = ShortCert(sc.tm, sc.wfas)
 
     if verbose:
         print(_cert_size_text(sc), end='', file=sys.stderr)
@@ -90,7 +90,7 @@ def _cert_size(sc):
     return _size_aggr(len(sc.wfas[0].t)//sc.tm.symbols, len(sc.wfas[1].t)//sc.tm.symbols)
 
 def _size_aggr(lsize, rsize):
-    return len(sc.wfas[0].t) * len(sc.wfas[1].t)
+    return lsize * rsize
 
 def _cert_size_text(sc):
     return '{}x{}'.format(len(sc.wfas[0].t)//sc.tm.symbols, len(sc.wfas[1].t)//sc.tm.symbols)
