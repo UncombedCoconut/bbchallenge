@@ -1,6 +1,7 @@
 #!/usr/bin/pypy3
 # SPDX-FileCopyrightText: 2023 Justin Blanchard <UncombedCoconut@gmail.com>
 # SPDX-License-Identifier: Apache-2.0 OR MIT
+HALT, R, L = range(-1, 2)
 
 class TM:
     __slots__ = ('code', 'states', 'symbols', 'seed')
@@ -8,19 +9,28 @@ class TM:
         self.code, self.states, self.symbols, self.seed = code, states, symbols, seed
 
     def transition(self, from_state, read_symbol):
-        """ Return (write, direction, to_state). (directions are R=0, L=1; to_state==-1 is halt.) """
+        """ Return (write, direction, to_state). (directions are R or L; to_state is HALT or a 0-based ID.) """
         fr = from_state * self.symbols + read_symbol
         w, d, t = self.code[3*fr:3*(fr+1)]
         return w, d, t-1
 
     def transitions(self):
-        """ Yield tuples (from_state, read, write, direction, to_state). (directions are R=0, L=1; to_state==-1 is halt.) """
+        """ Yield tuples (from_state, read, write, direction, to_state). (directions are R or L; to_state is HALT or a 0-based ID.) """
         fr_x_3 = 0
         for f in range(self.states):
             for r in range(self.symbols):
                 w, d, t = self.code[fr_x_3:fr_x_3+3]
                 yield f, r, w, d, t-1
                 fr_x_3 += 3
+
+    def default_state(self):
+        return 0
+
+    def default_symbol(self):
+        return 0
+
+    def base_symbol(self, s):
+        return s
 
     def __str__(self):
         parts = []
