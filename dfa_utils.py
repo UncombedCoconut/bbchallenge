@@ -58,7 +58,7 @@ def bfs_ordered(dfa, S=2):
     return trans
 
 
-def reachable_states(dfa, S=2):
+def reachable_states(dfa, S=2, up_to=0):
     '''Return the number of reachable states: like len(bfs_ordered(dfa, S))//S, but faster.'''
     reached = {0}
     visiting = [0]
@@ -70,6 +70,8 @@ def reachable_states(dfa, S=2):
             reached.add(q1)
             if l0 != len(reached):
                 visiting.append(q1)
+            if len(reached) == up_to:
+                return up_to
     return len(reached)
 
 

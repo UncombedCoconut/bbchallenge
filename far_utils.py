@@ -11,7 +11,8 @@ def optimize_proof(tm, dfa, side=0, sim_space=16, sim_time=2**15, verbose=True):
     Q = len(dfa)//S
     tm = reversed(tm) if side else tm
     sink = next((q for q in range(Q) if set(dfa[S*q:S*(q+1)]) == {q}), None)
-    sort_key = lambda q1q2: (reachable_states(redirect(dfa, *q1q2), S), q1q2[1], q1q2[0])
+    score = len(dfa) // S
+    sort_key = lambda q1q2: (reachable_states(redirect(dfa, *q1q2), S, score) if q1q2[1] in dfa else score, q1q2[1], q1q2[0])
 
     non_sinking = [set() for _ in range(Q)]
     if sink is not None:
@@ -44,12 +45,13 @@ def optimize_proof(tm, dfa, side=0, sim_space=16, sim_time=2**15, verbose=True):
     dfa_reduced = dfa
 
     if verbose:
-        print('LR'[side], end='')
+        print('LR'[side], '0=', score, sep='', end='')
     for iq, (q1, q2) in enumerate(identifications):
         q_unreduced = redirect(dfa, q1, q2)
         q_reduced = bfs_ordered(q_unreduced, S)
         if len(q_reduced) >= len(dfa_reduced): continue
-        status = f'?{len(q_reduced)//S}|{(1+iq)*100/len(identifications):.3f}%'
+        score = len(q_reduced) // S
+        status = f'>{score}?={"LR"[side]}|{(1+iq)*100/len(identifications):.3f}%'
         if verbose:
             print(status, end='', flush=True)
             print('\b \b'*len(status), end='', flush=False)
@@ -60,7 +62,7 @@ def optimize_proof(tm, dfa, side=0, sim_space=16, sim_time=2**15, verbose=True):
             if verbose:
                 print(f'>{len(q_reduced)//S}', end='', flush=True)
     if verbose:
-        print(f' => {len(dfa_reduced)//S}', flush=True)
+        print('=', 'LR'[side], sep='', flush=True)
     return dfa_reduced
 
 def complementary_dfa(tm, dfa, side):
