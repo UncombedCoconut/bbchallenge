@@ -3,15 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 STATE_COLOR = ((255, 0, 0), (255, 128, 0), (0, 0, 255), (0, 255, 0), (255, 0, 255), (0, 255, 255), (255, 255, 0))
 
-def main(tm, step_limit, png=False, svg=False):
+def main(tm, step_limit, tape_l=0, tape_r=0, png=False, svg=False):
     name = f'{tm.states}x{tm.symbols}_{tm.seed}' if tm.seed else str(tm)
     fn = f'bb_{name}.txt'
     with open(fn, 'w') as bbout:
         curr_state = 0
         curr_pos = step_limit
         tape = bytearray(2*step_limit)
-        l = r = curr_pos
+        l = curr_pos + tape_l
+        r = curr_pos + tape_r
         for row in range(step_limit):
+            l = min(l, curr_pos)
+            r = max(r, curr_pos)
             print(*tape[l:curr_pos], sep='', end='', file=bbout)
             print(f'{chr(65+curr_state)}', end='', file=bbout)
             print(*tape[curr_pos:r+1], sep='', file=bbout)
@@ -20,8 +23,6 @@ def main(tm, step_limit, png=False, svg=False):
             tape[curr_pos] = w
             curr_pos += (-1 if d else 1)
             curr_state = t
-            l = min(l, curr_pos)
-            r = max(r, curr_pos)
     if png: save_png(tm, step_limit, name, l, r)
     if svg: save_svg(tm, step_limit, name, l, r)
 
@@ -72,10 +73,12 @@ def save_svg(tm, step_limit, name, l, r):
 
 if __name__ == '__main__':
     from bb_args import ArgumentParser, tm_args
-    ap = ArgumentParser(description='Enumerate shift rules.', parents=[tm_args()])
-    ap.add_argument('-l', '--step-limit', help='Max transition count in a shift rule.', type=int, default=10000)
+    ap = ArgumentParser(description='Diagram a TM (text/png/svg).', parents=[tm_args()])
+    ap.add_argument('-N', '--step-limit', help='Number of rows to show.', type=int, default=10000)
+    ap.add_argument('-l', '--tape-left', help='Tape includes this x position', type=int, default=0)
+    ap.add_argument('-r', '--tape-right', help='Tape includes this x position', type=int, default=0)
     ap.add_argument('-p', '--png', help='Emit a PNG file', action='store_true')
     ap.add_argument('-v', '--svg', help='Emit an SVG file', action='store_true')
     args = ap.parse_args()
     for tm in args.machines:
-        main(tm, step_limit=args.step_limit, png=args.png, svg=args.svg)
+        main(tm, step_limit=args.step_limit, tape_l=args.tape_left, tape_r=args.tape_right, png=args.png, svg=args.svg)
