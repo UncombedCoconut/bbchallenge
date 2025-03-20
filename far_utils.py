@@ -89,14 +89,14 @@ def complementary_dfa(tm, dfa, side):
             trans[S*i0+s] = i1
     return trans
 
-def optimize_dfa_pair(tm, dfas, sim_space=16, sim_time=2**15, complement=False):
+def optimize_dfa_pair(tm, dfas, sim_space=16, sim_time=2**15, complement=False, verbose=True):
     new_dfa = dfas
     best_dfa = [None, None]
     while any(new_dfa):
         cur_dfa, new_dfa = new_dfa, [None, None]
         for side, dfa in enumerate(cur_dfa):
             if dfa:
-                dfa = optimize_proof(tm, dfa, side, sim_space=sim_space, sim_time=sim_time)
+                dfa = optimize_proof(tm, dfa, side, sim_space=sim_space, sim_time=sim_time, verbose=verbose)
                 if not best_dfa[side] or len(dfa) < len(best_dfa[side]):
                     new_dfa[side] = best_dfa[side] = dfa
                     if complement:
