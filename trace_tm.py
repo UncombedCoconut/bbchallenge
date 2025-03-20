@@ -58,7 +58,7 @@ def save_svg(tm, step_limit, name, l, r):
         for i, s in enumerate(tape):
             color = STATE_COLOR[curr_state] if i == curr_pos else (round(255 * s / (tm.symbols-1)),) * 3
             fill = 'rgb({},{},{})'.format(*color)
-            pos_x = SVG_CELL_SIZE*((r+1)//2+i)
+            pos_x = SVG_CELL_SIZE*i
             pos_y = SVG_CELL_SIZE*row
             row_group.append(Rectangle(pos_x, pos_y, SVG_CELL_SIZE, SVG_CELL_SIZE, fill=fill))
         main_group.append(row_group)
