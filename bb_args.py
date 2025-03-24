@@ -12,7 +12,7 @@ def tm_args():
     ap.add_argument('-n', '--states', help='Number of TM states (for seed-DB TMs)', type=int, default=5)
     ap.add_argument('-s', '--symbols', help='Number of tape symbols (for seed-DB TMs)', type=int, default=2)
     ap.add_argument('-i', '--index', help='Include all machines from this index file', type=Index, action=_AddMachineList)
-    ap.add_argument('machines', help='DB seed numbers', nargs='*', action=_AddMachineList, default=BeaverColony())
+    ap.add_argument('machines', help='Standard text TMs or DB seed numbers', nargs='*', action=_AddMachineList, default=BeaverColony())
     return ap
 
 class _AddMachineList(Action):
