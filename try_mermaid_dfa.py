@@ -42,7 +42,7 @@ def main(tm, mermaid_path, side=1, tries=4, optimize=False):
 
 if __name__ == '__main__':
     from bb_args import ArgumentParser, tm_args
-    ap = ArgumentParser(description='optimize a DFA proof', parents=[tm_args()])
+    ap = ArgumentParser(description='Turn Mermaid DFAs into solutions: See https://discord.com/channels/960643023006490684/1259770421046411285/1352264289653887047', parents=[tm_args()])
     ap.add_argument('-r', '--right', help='Use DFA on the right side', action='store_true')
     ap.add_argument('-t', '--tries', help='Try this many times to expand the DFA with a symbol of memory', type=int, default=4)
     ap.add_argument('-o', '--optimize', help='Optimize the returned DFA', action='store_true')
