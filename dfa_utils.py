@@ -96,24 +96,32 @@ def product(dfas, S=2):
     return trans
 
 
-def line_graph(dfa, S=2):
-    '''Return a DFA whose states correspond to the possible transitions of the original. In other words, augment the DFA's state with the history going back one step.'''
+def line_graph(dfa, S=2, thin=False):
+    '''Return a DFA whose states correspond to the possible transitions of the original. In other words, augment the DFA's state with the history going back one step.
+    A "transition" is a symbol-labeled edge in the transition diagram, i.e., (q0,s) |-> q1.
+    In case thin=True, instead consider a "transition" to be the pair (q, q1) irrespective of the symbol involved.
+    The thin=True DFA is smaller. Its product with the "remember 1 symbol" DFA list(range(S))*S is the full line graph.'''
     state_id = {(0, 0): 0}
     trans = []
     bfs_q = deque(state_id)
     while bfs_q:
         for _ in range(S):
             trans.append(None)
-        q0, q1 = q0q1 = bfs_q.popleft()
-        i0 = state_id[q0q1]
+        if thin:
+            q0, q1 = state0 = bfs_q.popleft()
+            i0 = state_id[state0]
+        else:
+            q0, s = state0 = bfs_q.popleft()
+            q1 = dfa[S*q0+s]
+            i0 = state_id[state0]
         for s in range(S):
             q2 = dfa[S*q1+s]
-            q1q2 = q1, q2
+            state1 = (q1, q2) if thin else (q1, s)
             try:
-                i1 = state_id[q1q2]
+                i1 = state_id[state1]
             except KeyError:
-                i1 = state_id[q1q2] = len(state_id)
-                bfs_q.append(q1q2)
+                i1 = state_id[state1] = len(state_id)
+                bfs_q.append(state1)
             trans[S*i0+s] = i1
     return trans
 
